@@ -1,0 +1,10 @@
+---
+slug: :openimg
+depends:
+  mikutter: '0.2'
+  plugin:
+  - gtk
+version: '1.0'
+author: toshi_aのをmogunoが改造した
+name: 画像プレビュー（インライン表示用パッチ）
+description: メジャーな画像投稿サービスのURLがクリックされた時に、画像だけを専用のウィンドウに表示する
