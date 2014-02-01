@@ -6,9 +6,11 @@ require 'cairo'
 
 Plugin.create :sub_parts_image do
   UserConfig[:subparts_image_height] ||= 200
+  UserConfig[:subparts_image_tp] ||= 100
 
   settings "インライン画像表示" do
     adjustment("高さ(px)", :subparts_image_height, 10, 999)
+    adjustment("濃さ(%)", :subparts_image_tp, 0, 100)
   end
 
   on_boot do |service|
@@ -32,6 +34,14 @@ Plugin.create :sub_parts_image do
     # Nikoniko Video thumbnail
     Plugin[:openimg].addsupport(/^http:\/\/nico.ms\/sm/, nil) { |url, cancel|
       if url =~ /^http:\/\/nico.ms\/sm([0-9]+)/
+        "http://tn-skr#{($1.to_i % 4) + 1}.smilevideo.jp/smile?i=#{$1}"
+      else
+        nil
+      end
+    }
+
+    Plugin[:openimg].addsupport(/nicovideo\.jp\/watch\//, nil) { |url, cancel|
+      if url =~ /nicovideo\.jp\/watch\/sm([0-9]+)/
         "http://tn-skr#{($1.to_i % 4) + 1}.smilevideo.jp/smile?i=#{$1}"
       else
         nil
@@ -84,7 +94,10 @@ Plugin.create :sub_parts_image do
             }
 
             if offset <= y && (offset + height) >= y
-              Gtk::openurl(page_url)
+              case e.button
+              when 1
+                Gtk::openurl(page_url)
+              end
             end
           }
         end
@@ -126,7 +139,7 @@ Plugin.create :sub_parts_image do
           context.translate((context.clip_extents[2] - @main_icon.melt.width * scale_xy) / 2, 0)
           context.scale(scale_xy, scale_xy)
           context.set_source_pixbuf(@main_icon)
-          context.paint
+          context.paint(UserConfig[:subparts_image_tp] / 100.0)
         }
       end
     end
