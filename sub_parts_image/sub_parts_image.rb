@@ -11,12 +11,39 @@ Plugin.create :sub_parts_image do
     adjustment("高さ(px)", :subparts_image_height, 10, 999)
   end
 
+  on_boot do |service|
+    # YouTube thumbnail
+    Plugin[:openimg].addsupport(/^http:\/\/youtu.be\//, nil) { |url, cancel|
+      if url =~ /^http:\/\/youtu.be\/([^\/]+)/
+        "http://img.youtube.com/vi/#{$1}/0.jpg"
+      else
+        nil
+      end
+    }
+
+    Plugin[:openimg].addsupport(/^https:\/\/www\.youtube\.com\/watch\?v=/, nil) { |url, cancel|
+      if url =~ /^https:\/\/www\.youtube\.com\/watch\?v=([^\&]+)/
+        "http://img.youtube.com/vi/#{$1}/0.jpg"
+      else
+        nil
+      end
+    }
+
+    # Nikoniko Video thumbnail
+    Plugin[:openimg].addsupport(/^http:\/\/nico.ms\/sm/, nil) { |url, cancel|
+      if url =~ /^http:\/\/nico.ms\/sm([0-9]+)/
+        "http://tn-skr#{($1.to_i % 4) + 1}.smilevideo.jp/smile?i=#{$1}"
+      else
+        nil
+      end
+    }
+  end
+
   class Gdk::SubPartsImage < Gdk::SubParts
     regist
 
     def initialize(*args)
       super
-      @url = nil
 
       if message and not helper.visible?
         if message[:entities]
@@ -26,10 +53,13 @@ Plugin.create :sub_parts_image do
             target += message[:entities][:media].map { |m| m[:media_url] }
           end
 
+          page_url = nil
+
           target.each { |base_url|
             @image_url = Plugin[:openimg].get_image_url(base_url)
 
             if @image_url
+              page_url = base_url
               break
             end
           }
@@ -40,6 +70,22 @@ Plugin.create :sub_parts_image do
             helper.on_modify
             helper.signal_handler_disconnect(sid)
             false 
+          }
+
+          helper.ssc(:click){ |this, e, x, y|
+            offset = helper.mainpart_height
+
+            helper.subparts.each{ |part|
+              if part == self
+                break
+              end
+
+              offset += part.height
+            }
+
+            if offset <= y && (offset + height) >= y
+              Gtk::openurl(page_url)
+            end
           }
         end
       end
