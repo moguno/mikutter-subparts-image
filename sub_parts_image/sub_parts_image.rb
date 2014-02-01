@@ -37,6 +37,14 @@ Plugin.create :sub_parts_image do
         nil
       end
     }
+
+    Plugin[:openimg].addsupport(/nicovideo\.jp\/watch\//, nil) { |url, cancel|
+      if url =~ /nicovideo\.jp\/watch\/sm([0-9]+)/
+        "http://tn-skr#{($1.to_i % 4) + 1}.smilevideo.jp/smile?i=#{$1}"
+      else
+        nil
+      end
+    }
   end
 
   class Gdk::SubPartsImage < Gdk::SubParts
