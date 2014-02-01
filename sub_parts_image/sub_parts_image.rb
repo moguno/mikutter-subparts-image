@@ -55,7 +55,7 @@ Plugin.create :sub_parts_image do
     def initialize(*args)
       super
 
-      if message and not helper.visible?
+      if message
         if message[:entities]
           target = message[:entities][:urls].map { |m| m[:expanded_url] }
 
@@ -145,7 +145,7 @@ Plugin.create :sub_parts_image do
     end
 
     def height
-      if helper.visible? and message and @image_url
+      if message and @image_url
         UserConfig[:subparts_image_height]
       else
         0
