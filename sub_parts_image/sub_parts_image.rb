@@ -83,7 +83,7 @@ Plugin.create :sub_parts_image do
               offset += part.height
             }
 
-            if offset <= y && (offset + height) >= y
+            if offset <= y && (offset + height) >= y && e.button == 1
               Gtk::openurl(page_url)
             end
           }
