@@ -23,8 +23,8 @@ Plugin.create :sub_parts_image do
       end
     }
 
-    Plugin[:openimg].addsupport(/^https:\/\/www\.youtube\.com\/watch\?v=/, nil) { |url, cancel|
-      if url =~ /^https:\/\/www\.youtube\.com\/watch\?v=([^\&]+)/
+    Plugin[:openimg].addsupport(/^https?:\/\/www\.youtube\.com\/watch\?v=/, nil) { |url, cancel|
+      if url =~ /^https?:\/\/www\.youtube\.com\/watch\?v=([^\&]+)/
         "http://img.youtube.com/vi/#{$1}/0.jpg"
       else
         nil
