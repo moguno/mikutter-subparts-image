@@ -16,15 +16,15 @@ Plugin.create :sub_parts_image do
   on_boot do |service|
     # YouTube thumbnail
     Plugin[:openimg].addsupport(/^http:\/\/youtu.be\//, nil) { |url, cancel|
-      if url =~ /^http:\/\/youtu.be\/([^\/]+)/
+      if url =~ /^http:\/\/youtu.be\/([^\?\/]+)/
         "http://img.youtube.com/vi/#{$1}/0.jpg"
       else
         nil
       end
     }
 
-    Plugin[:openimg].addsupport(/^https:\/\/www\.youtube\.com\/watch\?v=/, nil) { |url, cancel|
-      if url =~ /^https:\/\/www\.youtube\.com\/watch\?v=([^\&]+)/
+    Plugin[:openimg].addsupport(/^https?:\/\/www\.youtube\.com\/watch\?v=/, nil) { |url, cancel|
+      if url =~ /^https?:\/\/www\.youtube\.com\/watch\?v=([^\&]+)/
         "http://img.youtube.com/vi/#{$1}/0.jpg"
       else
         nil
