@@ -77,9 +77,9 @@ Plugin.create :sub_parts_image do
 
         if @image_url
           Gdk::WebImageLoader.get_raw_data(@image_url) {|data| 
-            if data
-              parts_height = UserConfig[:subparts_image_height]
+            parts_height = UserConfig[:subparts_image_height]
 
+            if data
               begin
                 loader = Gdk::PixbufLoader.new
                 loader.write data
