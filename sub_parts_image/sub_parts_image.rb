@@ -76,6 +76,29 @@ Plugin.create :sub_parts_image do
         end
 
         if @image_url
+          Gdk::WebImageLoader.get_raw_data(@image_url) {|data| 
+            if data
+              parts_height = UserConfig[:subparts_image_height]
+
+              begin
+                loader = Gdk::PixbufLoader.new
+                loader.write data
+                loader.close
+                @main_icon = loader.pixbuf
+              rescue => e
+                puts e
+                puts e.backtrace
+                @main_icon = Gdk::WebImageLoader.notfound_pixbuf(parts_height, parts_height).melt
+              end
+            else
+              @main_icon = Gdk::WebImageLoader.notfound_pixbuf(parts_height, parts_height).melt
+            end
+
+            Delayer.new(Delayer::UI_PASSIVE) {
+              helper.on_modify
+            }
+          }
+
           sid = helper.ssc(:expose_event, helper) {
             helper.on_modify
             helper.signal_handler_disconnect(sid)
@@ -105,38 +128,17 @@ Plugin.create :sub_parts_image do
     end
 
     def render(context)
+      parts_height = UserConfig[:subparts_image_height]
+
       if helper.visible? and message and @image_url
         context.save{
-          if !@main_icon
-            @main_icon = Gdk::WebImageLoader.loading_pixbuf(UserConfig[:subparts_image_height], UserConfig[:subparts_image_height])
+          @main_icon ||= Gdk::WebImageLoader.loading_pixbuf(parts_height, parts_height).melt
 
-            raw = Gdk::WebImageLoader.get_raw_data(@image_url) {|data| 
-              if data
-                begin
-                  loader = Gdk::PixbufLoader.new
-                  loader.write data
-                  loader.close
-                  @main_icon = loader.pixbuf
-                rescue => e
-                  puts e
-                  puts e.backtrace
-                  @main_icon = Gdk::WebImageLoader.notfound_pixbuf(UserConfig[:subparts_image_height], UserConfig[:subparts_image_height])
-                end
-              else
-                @main_icon = Gdk::WebImageLoader.notfound_pixbuf(UserConfig[:subparts_image_height], UserConfig[:subparts_image_height])
-              end
-
-              Delayer.new {
-                helper.on_modify
-              }
-            }
-          end 
-
-          width_ratio = context.clip_extents[2] / @main_icon.melt.width 
-          height_ratio = UserConfig[:subparts_image_height].to_f / @main_icon.melt.height
+          width_ratio = context.clip_extents[2] / @main_icon.width 
+          height_ratio = parts_height.to_f / @main_icon.height
           scale_xy = [height_ratio, width_ratio].min
  
-          context.translate((context.clip_extents[2] - @main_icon.melt.width * scale_xy) / 2, 0)
+          context.translate((context.clip_extents[2] - @main_icon.width * scale_xy) / 2, 0)
           context.scale(scale_xy, scale_xy)
           context.set_source_pixbuf(@main_icon)
           context.paint(UserConfig[:subparts_image_tp] / 100.0)
