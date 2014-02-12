@@ -55,6 +55,8 @@ Plugin.create :sub_parts_image do
     def initialize(*args)
       super
 
+      page_url = nil
+
       if message
         if message[:entities]
           target = message[:entities][:urls].map { |m| m[:expanded_url] }
@@ -62,8 +64,6 @@ Plugin.create :sub_parts_image do
           if message[:entities][:media]
             target += message[:entities][:media].map { |m| m[:media_url] }
           end
-
-          page_url = nil
 
           target.each { |base_url|
             @image_url = Plugin[:openimg].get_image_url(base_url)
@@ -76,7 +76,7 @@ Plugin.create :sub_parts_image do
         end
 
         if @image_url
-          Gdk::WebImageLoader.get_raw_data(@image_url) { |data, exception|
+          image = Gdk::WebImageLoader.get_raw_data(@image_url) { |data, exception|
             parts_height = UserConfig[:subparts_image_height]
 
             if !exception && data
@@ -98,6 +98,13 @@ Plugin.create :sub_parts_image do
               helper.on_modify
             }
           }
+
+          if image != :wait
+            loader = Gdk::PixbufLoader.new
+            loader.write image
+            loader.close
+            @main_icon = loader.pixbuf
+          end
 
           sid = helper.ssc(:expose_event, helper) {
             helper.on_modify
@@ -147,7 +154,7 @@ Plugin.create :sub_parts_image do
     end
 
     def height
-      if message and @image_url
+      if helper.visible? and message and @image_url
         UserConfig[:subparts_image_height]
       else
         0
