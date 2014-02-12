@@ -16,7 +16,7 @@ Plugin.create :sub_parts_image do
   on_boot do |service|
     # YouTube thumbnail
     Plugin[:openimg].addsupport(/^http:\/\/youtu.be\//, nil) { |url, cancel|
-      if url =~ /^http:\/\/youtu.be\/([^\?\/]+)/
+      if url =~ /^http:\/\/youtu.be\/([^\?\/\#]+)/
         "http://img.youtube.com/vi/#{$1}/0.jpg"
       else
         nil
@@ -55,6 +55,8 @@ Plugin.create :sub_parts_image do
     def initialize(*args)
       super
 
+      page_url = nil
+
       if message
         if message[:entities]
           target = message[:entities][:urls].map { |m| m[:expanded_url] }
@@ -62,8 +64,6 @@ Plugin.create :sub_parts_image do
           if message[:entities][:media]
             target += message[:entities][:media].map { |m| m[:media_url] }
           end
-
-          page_url = nil
 
           target.each { |base_url|
             @image_url = Plugin[:openimg].get_image_url(base_url)
@@ -76,10 +76,10 @@ Plugin.create :sub_parts_image do
         end
 
         if @image_url
-          Gdk::WebImageLoader.get_raw_data(@image_url) {|data| 
+          image = Gdk::WebImageLoader.get_raw_data(@image_url) { |data, exception|
             parts_height = UserConfig[:subparts_image_height]
 
-            if data
+            if !exception && data
               begin
                 loader = Gdk::PixbufLoader.new
                 loader.write data
@@ -98,6 +98,13 @@ Plugin.create :sub_parts_image do
               helper.on_modify
             }
           }
+
+          if image != :wait
+            loader = Gdk::PixbufLoader.new
+            loader.write image
+            loader.close
+            @main_icon = loader.pixbuf
+          end
 
           sid = helper.ssc(:expose_event, helper) {
             helper.on_modify
@@ -147,7 +154,7 @@ Plugin.create :sub_parts_image do
     end
 
     def height
-      if message and @image_url
+      if helper.visible? and message and @image_url
         UserConfig[:subparts_image_height]
       else
         0
