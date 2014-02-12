@@ -16,7 +16,7 @@ Plugin.create :sub_parts_image do
   on_boot do |service|
     # YouTube thumbnail
     Plugin[:openimg].addsupport(/^http:\/\/youtu.be\//, nil) { |url, cancel|
-      if url =~ /^http:\/\/youtu.be\/([^\?\/]+)/
+      if url =~ /^http:\/\/youtu.be\/([^\?\/\#]+)/
         "http://img.youtube.com/vi/#{$1}/0.jpg"
       else
         nil
