@@ -4,6 +4,98 @@ miquire :mui, 'sub_parts_helper'
 require 'gtk2'
 require 'cairo'
 
+class ImageLoadHelper
+  def self.get_image_url(message)
+    result = nil
+
+    if message[:entities]
+      target = message[:entities][:urls].map { |m| m[:expanded_url] }
+
+      if message[:entities][:media]
+        target += message[:entities][:media].map { |m| m[:media_url] }
+      end
+
+      target.each { |base_url|
+        image_url = Plugin[:openimg].get_image_url(base_url)
+
+        if image_url
+          result = {:page_url => base_url, :image_url => image_url}
+
+          break
+        end
+      }
+    end
+
+    result
+  end
+
+  def self.load_start(message, &block)
+    urls = get_image_url(message)
+
+    if urls
+      main_icon = nil
+      parts_height = UserConfig[:subparts_image_height]
+
+      image = Gdk::WebImageLoader.get_raw_data(urls[:image_url]) { |data, exception|
+
+        if !exception && data
+          begin
+            loader = Gdk::PixbufLoader.new
+            loader.write data
+            loader.close
+ 
+            main_icon = loader.pixbuf
+          rescue => e
+            puts e
+            puts e.backtrace
+            main_icon = Gdk::WebImageLoader.notfound_pixbuf(parts_height, parts_height).melt
+          end
+        else
+          main_icon = Gdk::WebImageLoader.notfound_pixbuf(parts_height, parts_height).melt
+        end
+
+        if main_icon
+          Delayer.new(Delayer::UI_PASSIVE) {
+            block.call(urls, main_icon)
+          }
+        end
+      }
+
+      if image == :wait
+        main_icon = Gdk::WebImageLoader.loading_pixbuf(parts_height, parts_height).melt
+      else
+        loader = Gdk::PixbufLoader.new
+        loader.write image
+        loader.close
+
+        main_icon = loader.pixbuf
+      end
+
+      Delayer.new(Delayer::UI_PASSIVE) {
+        block.call(urls, main_icon)
+      }
+    end
+  end
+
+  @@queue = nil
+
+  def self.add(message, &block)
+    if !@@queue
+      @@queue = Queue.new
+
+      Thread.start {
+        while true
+          msg = @@queue.pop
+          load_start(msg[:message], &msg[:block])
+        end
+      }
+    end
+
+    @@queue.push({:message => message, :block => block})
+  end
+end
+
+
 Plugin.create :sub_parts_image do
   UserConfig[:subparts_image_height] ||= 200
   UserConfig[:subparts_image_tp] ||= 100
@@ -55,58 +147,9 @@ Plugin.create :sub_parts_image do
     def initialize(*args)
       super
 
-      page_url = nil
-
       if message
-        if message[:entities]
-          target = message[:entities][:urls].map { |m| m[:expanded_url] }
-
-          if message[:entities][:media]
-            target += message[:entities][:media].map { |m| m[:media_url] }
-          end
-
-          target.each { |base_url|
-            @image_url = Plugin[:openimg].get_image_url(base_url)
-
-            if @image_url
-              page_url = base_url
-              break
-            end
-          }
-        end
-
-        if @image_url
-          image = Gdk::WebImageLoader.get_raw_data(@image_url) { |data, exception|
-            parts_height = UserConfig[:subparts_image_height]
-
-            if !exception && data
-              begin
-                loader = Gdk::PixbufLoader.new
-                loader.write data
-                loader.close
-                @main_icon = loader.pixbuf
-              rescue => e
-                puts e
-                puts e.backtrace
-                @main_icon = Gdk::WebImageLoader.notfound_pixbuf(parts_height, parts_height).melt
-              end
-            else
-              @main_icon = Gdk::WebImageLoader.notfound_pixbuf(parts_height, parts_height).melt
-            end
-
-            Delayer.new(Delayer::UI_PASSIVE) {
-              helper.on_modify
-            }
-          }
-
-          if image != :wait
-            loader = Gdk::PixbufLoader.new
-            loader.write image
-            loader.close
-            @main_icon = loader.pixbuf
-          end
-
-          sid = helper.ssc(:expose_event, helper) {
+        ImageLoadHelper.add(message) { |urls, pixbuf|
+         sid = helper.ssc(:expose_event, helper) {
             helper.on_modify
             helper.signal_handler_disconnect(sid)
             false 
@@ -126,20 +169,29 @@ Plugin.create :sub_parts_image do
             if offset <= y && (offset + height) >= y
               case e.button
               when 1
-                Gtk::openurl(page_url)
+                Gtk::openurl(urls[:page_url])
               end
             end
           }
-        end
+
+
+          first_disp = (@main_icon == nil)
+          @main_icon = pixbuf
+
+          if first_disp
+            helper.reset_height
+          end
+
+          helper.on_modify
+        }
       end
     end
 
-    def render(context)
-      parts_height = UserConfig[:subparts_image_height]
 
-      if helper.visible? and message and @image_url
+    def render(context)
+      if @main_icon
+        parts_height = UserConfig[:subparts_image_height]
         context.save{
-          @main_icon ||= Gdk::WebImageLoader.loading_pixbuf(parts_height, parts_height).melt
 
           width_ratio = context.clip_extents[2] / @main_icon.width 
           height_ratio = parts_height.to_f / @main_icon.height
@@ -153,8 +205,9 @@ Plugin.create :sub_parts_image do
       end
     end
 
+
     def height
-      if helper.visible? and message and @image_url
+      if @main_icon
         UserConfig[:subparts_image_height]
       else
         0
