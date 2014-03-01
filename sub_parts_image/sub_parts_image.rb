@@ -29,6 +29,7 @@ class ImageLoadHelper
     result
   end
 
+
   def self.load_start(message, &block)
     urls = get_image_url(message)
 
@@ -77,6 +78,7 @@ class ImageLoadHelper
     end
   end
 
+
   @@queue = nil
 
   def self.add(message, &block)
@@ -100,10 +102,12 @@ Plugin.create :sub_parts_image do
   UserConfig[:subparts_image_height] ||= 200
   UserConfig[:subparts_image_tp] ||= 100
 
+
   settings "インライン画像表示" do
     adjustment("高さ(px)", :subparts_image_height, 10, 999)
     adjustment("濃さ(%)", :subparts_image_tp, 0, 100)
   end
+
 
   on_boot do |service|
     # YouTube thumbnail
@@ -141,6 +145,7 @@ Plugin.create :sub_parts_image do
     }
   end
 
+
   class Gdk::SubPartsImage < Gdk::SubParts
     regist
 
@@ -149,16 +154,16 @@ Plugin.create :sub_parts_image do
 
       if message
         ImageLoadHelper.add(message) { |urls, pixbuf|
-         sid = helper.ssc(:expose_event, helper) {
+          sid = helper.ssc(:expose_event, helper) {
             helper.on_modify
             helper.signal_handler_disconnect(sid)
             false 
           }
 
-          helper.ssc(:click){ |this, e, x, y|
+          helper.ssc(:click) { |this, e, x, y|
             offset = helper.mainpart_height
 
-            helper.subparts.each{ |part|
+            helper.subparts.each { |part|
               if part == self
                 break
               end
@@ -173,7 +178,6 @@ Plugin.create :sub_parts_image do
               end
             end
           }
-
 
           first_disp = (@main_icon == nil)
           @main_icon = pixbuf
@@ -191,8 +195,8 @@ Plugin.create :sub_parts_image do
     def render(context)
       if @main_icon
         parts_height = UserConfig[:subparts_image_height]
-        context.save{
 
+        context.save {
           width_ratio = context.clip_extents[2] / @main_icon.width 
           height_ratio = parts_height.to_f / @main_icon.height
           scale_xy = [height_ratio, width_ratio].min
@@ -213,6 +217,7 @@ Plugin.create :sub_parts_image do
         0
       end
     end
+
 
     private
 
