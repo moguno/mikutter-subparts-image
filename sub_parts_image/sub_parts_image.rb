@@ -154,30 +154,32 @@ Plugin.create :sub_parts_image do
 
       if message
         ImageLoadHelper.add(message) { |urls, pixbuf|
-          sid = helper.ssc(:expose_event, helper) {
-            helper.on_modify
-            helper.signal_handler_disconnect(sid)
-            false 
-          }
-
-          helper.ssc(:click) { |this, e, x, y|
-            offset = helper.mainpart_height
-
-            helper.subparts.each { |part|
-              if part == self
-                break
-              end
-
-              offset += part.height
+          if !helper.destroyed?
+            sid = helper.ssc(:expose_event, helper) {
+              helper.on_modify
+              helper.signal_handler_disconnect(sid)
+              false 
             }
 
-            if offset <= y && (offset + height) >= y
-              case e.button
-              when 1
-                Gtk::openurl(urls[:page_url])
+            helper.ssc(:click) { |this, e, x, y|
+              offset = helper.mainpart_height
+
+              helper.subparts.each { |part|
+                if part == self
+                  break
+                end
+
+                offset += part.height
+              }
+
+              if offset <= y && (offset + height) >= y
+                case e.button
+                when 1
+                  Gtk::openurl(urls[:page_url])
+                end
               end
-            end
-          }
+            }
+          end
 
           first_disp = (@main_icon == nil)
           @main_icon = pixbuf
