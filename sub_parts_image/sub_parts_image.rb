@@ -161,7 +161,14 @@ Plugin.create :sub_parts_image do
               false 
             }
 
+            @ignore_event = false
+
             helper.ssc(:click) { |this, e, x, y|
+              # なぜか２回連続でクリックイベントが飛んでくるのでアドホックに回避する
+              if @ignore_event 
+                next
+              end
+
               offset = helper.mainpart_height
 
               helper.subparts.each { |part|
@@ -176,6 +183,13 @@ Plugin.create :sub_parts_image do
                 case e.button
                 when 1
                   Gtk::openurl(urls[:page_url])
+
+                  @ignore_event = true
+
+                  Thread.new {
+                    sleep(0.5)
+                    @ignore_event = false
+                  }
                 end
               end
             }
