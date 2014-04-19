@@ -4,7 +4,11 @@ miquire :mui, 'sub_parts_helper'
 require 'gtk2'
 require 'cairo'
 
+
+# 画像ローダー
 class ImageLoadHelper
+
+  # 画像URLを取得
   def self.get_image_url(message)
     result = nil
 
@@ -30,6 +34,7 @@ class ImageLoadHelper
   end
 
 
+  # 画像をダウンロードする
   def self.load_start(message, &block)
     urls = get_image_url(message)
 
@@ -79,6 +84,7 @@ class ImageLoadHelper
   end
 
 
+  # 画像ロードを依頼する
   @@queue = nil
 
   def self.add(message, &block)
@@ -98,6 +104,7 @@ class ImageLoadHelper
 end
 
 
+# ここからプラグイン本体
 Plugin.create :sub_parts_image do
   UserConfig[:subparts_image_height] ||= 200
   UserConfig[:subparts_image_tp] ||= 100
@@ -146,6 +153,7 @@ Plugin.create :sub_parts_image do
   end
 
 
+  # サブパーツ
   class Gdk::SubPartsImage < Gdk::SubParts
     regist
 
@@ -153,14 +161,20 @@ Plugin.create :sub_parts_image do
       super
 
       if message
+        # イメージ読み込みスレッドを起こす
         ImageLoadHelper.add(message) { |urls, pixbuf|
+          # イメージ取得完了
+
           if !helper.destroyed?
+            # 再描画イベント
             sid = helper.ssc(:expose_event, helper) {
+              # サブパーツ描画
               helper.on_modify
               helper.signal_handler_disconnect(sid)
               false 
             }
 
+            # クリックイベント
             @ignore_event = false
 
             helper.ssc(:click) { |this, e, x, y|
@@ -169,6 +183,7 @@ Plugin.create :sub_parts_image do
                 next
               end
 
+              # クリック位置の特定
               offset = helper.mainpart_height
 
               helper.subparts.each { |part|
@@ -179,6 +194,7 @@ Plugin.create :sub_parts_image do
                 offset += part.height
               }
 
+              # イメージをクリックした
               if offset <= y && (offset + height) >= y
                 case e.button
                 when 1
@@ -195,6 +211,8 @@ Plugin.create :sub_parts_image do
             }
           end
 
+
+          # 初回表示の場合、TLの高さを変更する
           first_disp = (@main_icon == nil)
           @main_icon = pixbuf
 
@@ -202,12 +220,14 @@ Plugin.create :sub_parts_image do
             helper.reset_height
           end
 
+          # サブパーツ描画
           helper.on_modify
         }
       end
     end
 
 
+    # サブパーツを描画
     def render(context)
       if @main_icon
         parts_height = UserConfig[:subparts_image_height]
