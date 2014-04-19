@@ -8,27 +8,36 @@ require 'cairo'
 # 画像ローダー
 class ImageLoadHelper
 
-  # 画像URLを取得
-  def self.get_image_url(message)
-    result = nil
+  # メッセージに含まれるURLとエンティティを抽出する
+  def self.extract_urls_by_message(message)
+    target = []
 
     if message[:entities]
-      target = message[:entities][:urls].map { |m| m[:expanded_url] }
+      target = message[:entities][:urls].map { |m| { :url => m[:expanded_url], :entity => m } }
 
       if message[:entities][:media]
-        target += message[:entities][:media].map { |m| m[:media_url] }
+        target += message[:entities][:media].map { |m| { :url => m[:media_url], :entity => m } }
       end
-
-      target.each { |base_url|
-        image_url = Plugin[:openimg].get_image_url(base_url)
-
-        if image_url
-          result = {:page_url => base_url, :image_url => image_url}
-
-          break
-        end
-      }
     end
+
+    target
+  end
+
+
+  # 画像URLを取得
+  def self.get_image_urls(message)
+    target = extract_urls_by_message(message)
+
+    result = target.map { |entity|
+      base_url = entity[:url]
+      image_url = Plugin[:openimg].get_image_url(base_url)
+
+      if image_url
+        {:page_url => base_url, :image_url => image_url, :entity => entity[:entity] }
+      else
+        nil
+      end
+    }.compact.sort { |a| a[:entity][:indices][0] } 
 
     result
   end
@@ -36,13 +45,16 @@ class ImageLoadHelper
 
   # 画像をダウンロードする
   def self.load_start(message, &block)
-    urls = get_image_url(message)
+    urls = get_image_urls(message)
 
-    if urls
+    urls.each { |url|
+begin
       main_icon = nil
       parts_height = UserConfig[:subparts_image_height]
 
-      image = Gdk::WebImageLoader.get_raw_data(urls[:image_url]) { |data, exception|
+      # 画像のロード
+      image = Gdk::WebImageLoader.get_raw_data(url[:image_url]) { |data, exception|
+        # 即ロード出来なかった => ロード完了
 
         if !exception && data
           begin
@@ -61,14 +73,19 @@ class ImageLoadHelper
         end
 
         if main_icon
+          # コールバックを呼び出す
           Delayer.new(Delayer::UI_PASSIVE) {
-            block.call(urls, main_icon)
+            block.call(url, main_icon)
           }
         end
       }
 
+
+      # 即ロード出来なかった
       if image == :wait
         main_icon = Gdk::WebImageLoader.loading_pixbuf(parts_height, parts_height).melt
+
+      # 即ロード成功
       else
         loader = Gdk::PixbufLoader.new
         loader.write image
@@ -77,10 +94,15 @@ class ImageLoadHelper
         main_icon = loader.pixbuf
       end
 
+      # コールバックを呼び出す
       Delayer.new(Delayer::UI_PASSIVE) {
-        block.call(urls, main_icon)
+        block.call(url, main_icon)
       }
-    end
+rescue => e
+puts e
+puts e.backtrace
+end
+    }
   end
 
 
