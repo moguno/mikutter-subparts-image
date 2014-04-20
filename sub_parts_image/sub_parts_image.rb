@@ -44,8 +44,17 @@ class ImageLoadHelper
 
 
   # 画像をダウンロードする
-  def self.load_start(message, &block)
-    urls = get_image_urls(message)
+  def self.load_start(msg)
+puts "load_start"
+    urls = get_image_urls(msg[:message])
+
+    if urls.empty?
+      return
+    end
+
+    Delayer.new(Delayer::UI_PASSIVE) {
+      msg[:on_image_information].call(urls)
+    }
 
 begin
     urls.each_with_index { |url, i|
@@ -75,7 +84,7 @@ begin
         if main_icon
           # コールバックを呼び出す
           Delayer.new(Delayer::UI_PASSIVE) {
-            block.call(i, url, main_icon)
+            msg[:on_image_loaded].call(i, url, main_icon)
           }
         end
       }
@@ -96,7 +105,7 @@ begin
 
       # コールバックを呼び出す
       Delayer.new(Delayer::UI_PASSIVE) {
-        block.call(i, url, main_icon)
+        msg[:on_image_loaded].call(i, url, main_icon)
       }
     }
 rescue => e
@@ -109,19 +118,26 @@ end
   # 画像ロードを依頼する
   @@queue = nil
 
-  def self.add(message, &block)
+  def self.add(message, proc_image_information, proc_image_loaded)
+puts "add"
     if !@@queue
       @@queue = Queue.new
 
       Thread.start {
         while true
           msg = @@queue.pop
-          load_start(msg[:message], &msg[:block])
+begin
+          load_start(msg)
+rescue => e
+puts e 
+puts e.backtrace
+end
+
         end
       }
     end
 
-    @@queue.push({:message => message, :block => block})
+    @@queue.push({:message => message, :on_image_information => proc_image_information, :on_image_loaded => proc_image_loaded})
   end
 end
 
@@ -182,6 +198,7 @@ Plugin.create :sub_parts_image do
 
     def on_image_loaded(pos, url, pixbuf)
       # イメージ取得完了
+puts "on_image_loaded"
 
       if !helper.destroyed?
         # 再描画イベント
@@ -191,7 +208,25 @@ Plugin.create :sub_parts_image do
           helper.signal_handler_disconnect(sid)
           false 
         }
+      end
 
+      # 初回表示の場合、TLの高さを変更する
+      first_disp = @main_icons.empty?
+      @main_icons[pos] = pixbuf
+
+      if first_disp
+        helper.reset_height
+      end
+
+      # サブパーツ描画
+      helper.on_modify
+    end
+
+
+    def on_image_information(urls)
+      @num = urls.length
+
+      if !helper.destroyed?
         # クリックイベント
         @ignore_event = false
 
@@ -212,37 +247,24 @@ Plugin.create :sub_parts_image do
             offset += part.height
           }
 
-          # イメージをクリックした
-          if offset <= y && (offset + height) >= y
-            case e.button
-            when 1
-              Gtk::openurl(url[:page_url])
+          @num.times { |i|
+            # イメージをクリックした
+            if (offset + (i * UserConfig[:subparts_image_height])) <= y && (offset + ((i + 1) * UserConfig[:subparts_image_height])) >= y
+              case e.button
+              when 1
+                Gtk::openurl(urls[i][:page_url])
 
-              @ignore_event = true
+                @ignore_event = true
 
-              Thread.new {
-                sleep(0.5)
-                @ignore_event = false
-              }
+                Thread.new {
+                  sleep(0.5)
+                  @ignore_event = false
+                }
+              end
             end
-          end
+          }
         }
       end
-          # 初回表示の場合、TLの高さを変更する
-          first_disp = @main_icons.empty?
-          @main_icons[pos] = pixbuf
-
-          if first_disp
-            helper.reset_height
-          end
-
-          # サブパーツ描画
-          helper.on_modify
-    end
-
-
-    def on_image_infomation(num, urls)
-      @num = num
     end
 
 
@@ -252,9 +274,8 @@ Plugin.create :sub_parts_image do
 
       if message
         # イメージ読み込みスレッドを起こす
-        ImageLoadHelper.add(message) { |pos, url, pixbuf|
-          on_image_loaded(pos, url, pixbuf)
-        }
+puts "initialize"
+        ImageLoadHelper.add(message, method(:on_image_information), method(:on_image_loaded))
       end
     end
 
@@ -282,7 +303,7 @@ Plugin.create :sub_parts_image do
 
     def height
       if !@main_icons.empty?
-        1 * UserConfig[:subparts_image_height]
+        @num * UserConfig[:subparts_image_height]
       else
         0
       end
