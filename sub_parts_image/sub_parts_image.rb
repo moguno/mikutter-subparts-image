@@ -47,8 +47,8 @@ class ImageLoadHelper
   def self.load_start(message, &block)
     urls = get_image_urls(message)
 
-    urls.each { |url|
 begin
+    urls.each_with_index { |url, i|
       main_icon = nil
       parts_height = UserConfig[:subparts_image_height]
 
@@ -75,13 +75,13 @@ begin
         if main_icon
           # コールバックを呼び出す
           Delayer.new(Delayer::UI_PASSIVE) {
-            block.call(url, main_icon)
+            block.call(i, url, main_icon)
           }
         end
       }
 
 
-      # 即ロード出来なかった
+      # 即ロード出来なかった -> ロード中を表示して後はコールバックに任せる
       if image == :wait
         main_icon = Gdk::WebImageLoader.loading_pixbuf(parts_height, parts_height).melt
 
@@ -96,13 +96,13 @@ begin
 
       # コールバックを呼び出す
       Delayer.new(Delayer::UI_PASSIVE) {
-        block.call(url, main_icon)
+        block.call(i, url, main_icon)
       }
+    }
 rescue => e
 puts e
 puts e.backtrace
 end
-    }
   end
 
 
@@ -179,64 +179,58 @@ Plugin.create :sub_parts_image do
   class Gdk::SubPartsImage < Gdk::SubParts
     regist
 
-    def initialize(*args)
-      super
 
-      if message
-        # イメージ読み込みスレッドを起こす
-        ImageLoadHelper.add(message) { |urls, pixbuf|
-          # イメージ取得完了
+    def on_image_loaded(pos, url, pixbuf)
+      # イメージ取得完了
 
-          if !helper.destroyed?
-            # 再描画イベント
-            sid = helper.ssc(:expose_event, helper) {
-              # サブパーツ描画
-              helper.on_modify
-              helper.signal_handler_disconnect(sid)
-              false 
-            }
+      if !helper.destroyed?
+        # 再描画イベント
+        sid = helper.ssc(:expose_event, helper) {
+          # サブパーツ描画
+          helper.on_modify
+          helper.signal_handler_disconnect(sid)
+          false 
+        }
 
-            # クリックイベント
-            @ignore_event = false
+        # クリックイベント
+        @ignore_event = false
 
-            helper.ssc(:click) { |this, e, x, y|
-              # なぜか２回連続でクリックイベントが飛んでくるのでアドホックに回避する
-              if @ignore_event 
-                next
-              end
-
-              # クリック位置の特定
-              offset = helper.mainpart_height
-
-              helper.subparts.each { |part|
-                if part == self
-                  break
-                end
-
-                offset += part.height
-              }
-
-              # イメージをクリックした
-              if offset <= y && (offset + height) >= y
-                case e.button
-                when 1
-                  Gtk::openurl(urls[:page_url])
-
-                  @ignore_event = true
-
-                  Thread.new {
-                    sleep(0.5)
-                    @ignore_event = false
-                  }
-                end
-              end
-            }
+        helper.ssc(:click) { |this, e, x, y|
+          # なぜか２回連続でクリックイベントが飛んでくるのでアドホックに回避する
+          if @ignore_event 
+            next
           end
 
+          # クリック位置の特定
+          offset = helper.mainpart_height
 
+          helper.subparts.each { |part|
+            if part == self
+              break
+            end
+
+            offset += part.height
+          }
+
+          # イメージをクリックした
+          if offset <= y && (offset + height) >= y
+            case e.button
+            when 1
+              Gtk::openurl(url[:page_url])
+
+              @ignore_event = true
+
+              Thread.new {
+                sleep(0.5)
+                @ignore_event = false
+              }
+            end
+          end
+        }
+      end
           # 初回表示の場合、TLの高さを変更する
-          first_disp = (@main_icon == nil)
-          @main_icon = pixbuf
+          first_disp = @main_icons.empty?
+          @main_icons[pos] = pixbuf
 
           if first_disp
             helper.reset_height
@@ -244,6 +238,22 @@ Plugin.create :sub_parts_image do
 
           # サブパーツ描画
           helper.on_modify
+    end
+
+
+    def on_image_infomation(num, urls)
+      @num = num
+    end
+
+
+    def initialize(*args)
+      super
+      @main_icons = []
+
+      if message
+        # イメージ読み込みスレッドを起こす
+        ImageLoadHelper.add(message) { |pos, url, pixbuf|
+          on_image_loaded(pos, url, pixbuf)
         }
       end
     end
@@ -251,26 +261,28 @@ Plugin.create :sub_parts_image do
 
     # サブパーツを描画
     def render(context)
-      if @main_icon
-        parts_height = UserConfig[:subparts_image_height]
+      Array(@main_icons).each_with_index { |icon, i|
+        if icon
+          parts_height = UserConfig[:subparts_image_height]
 
-        context.save {
-          width_ratio = context.clip_extents[2] / @main_icon.width 
-          height_ratio = parts_height.to_f / @main_icon.height
-          scale_xy = [height_ratio, width_ratio].min
+          context.save {
+            width_ratio = context.clip_extents[2] / icon.width 
+            height_ratio = parts_height.to_f / icon.height
+            scale_xy = [height_ratio, width_ratio].min
  
-          context.translate((context.clip_extents[2] - @main_icon.width * scale_xy) / 2, 0)
-          context.scale(scale_xy, scale_xy)
-          context.set_source_pixbuf(@main_icon)
-          context.paint(UserConfig[:subparts_image_tp] / 100.0)
-        }
-      end
+            context.translate((context.clip_extents[2] - icon.width * scale_xy) / 2, parts_height * i)
+            context.scale(scale_xy, scale_xy)
+            context.set_source_pixbuf(icon)
+            context.paint(UserConfig[:subparts_image_tp] / 100.0)
+          }
+        end
+      }
     end
 
 
     def height
-      if @main_icon
-        UserConfig[:subparts_image_height]
+      if !@main_icons.empty?
+        1 * UserConfig[:subparts_image_height]
       else
         0
       end
