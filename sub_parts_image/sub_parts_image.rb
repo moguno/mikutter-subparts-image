@@ -8,6 +8,15 @@ require 'cairo'
 # 画像ローダー
 class ImageLoadHelper
 
+  # 0.2,0.3両対応の優先度設定
+  def self.ui_passive
+    if Delayer.const_defined?(:UI_PASSIVE)
+      Delayer::UI_PASSIVE
+    else
+      :ui_passive
+    end
+  end
+
   # メッセージに含まれるURLとエンティティを抽出する
   def self.extract_urls_by_message(message)
     target = []
@@ -51,7 +60,7 @@ class ImageLoadHelper
       return
     end
 
-    Delayer.new(Delayer::UI_PASSIVE) {
+    Delayer.new(ui_passive) {
       msg[:on_image_information].call(urls)
     }
 
@@ -81,7 +90,7 @@ class ImageLoadHelper
 
         if main_icon
           # コールバックを呼び出す
-          Delayer.new(Delayer::UI_PASSIVE) {
+          Delayer.new(ui_passive) {
             msg[:on_image_loaded].call(i, url, main_icon)
           }
         end
@@ -102,7 +111,7 @@ class ImageLoadHelper
       end
 
       # コールバックを呼び出す
-      Delayer.new(Delayer::UI_PASSIVE) {
+      Delayer.new(ui_passive) {
         msg[:on_image_loaded].call(i, url, main_icon)
       }
     }
