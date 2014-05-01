@@ -45,7 +45,6 @@ class ImageLoadHelper
 
   # 画像をダウンロードする
   def self.load_start(msg)
-puts "load_start"
     urls = get_image_urls(msg[:message])
 
     if urls.empty?
@@ -56,7 +55,6 @@ puts "load_start"
       msg[:on_image_information].call(urls)
     }
 
-begin
     urls.each_with_index { |url, i|
       main_icon = nil
       parts_height = UserConfig[:subparts_image_height]
@@ -108,10 +106,6 @@ begin
         msg[:on_image_loaded].call(i, url, main_icon)
       }
     }
-rescue => e
-puts e
-puts e.backtrace
-end
   end
 
 
@@ -119,20 +113,13 @@ end
   @@queue = nil
 
   def self.add(message, proc_image_information, proc_image_loaded)
-puts "add"
     if !@@queue
       @@queue = Queue.new
 
       Thread.start {
         while true
           msg = @@queue.pop
-begin
           load_start(msg)
-rescue => e
-puts e 
-puts e.backtrace
-end
-
         end
       }
     end
@@ -198,7 +185,6 @@ Plugin.create :sub_parts_image do
 
     def on_image_loaded(pos, url, pixbuf)
       # イメージ取得完了
-puts "on_image_loaded"
 
       if !helper.destroyed?
         # 再描画イベント
@@ -274,7 +260,6 @@ puts "on_image_loaded"
 
       if message
         # イメージ読み込みスレッドを起こす
-puts "initialize"
         ImageLoadHelper.add(message, method(:on_image_information), method(:on_image_loaded))
       end
     end
