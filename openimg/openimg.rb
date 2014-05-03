@@ -53,8 +53,18 @@ Plugin.create :openimg do
   end
 
   # 本物のopenimgをロードする
-  load File.join(File.dirname($0), "core", "plugin", "openimg", "openimg.rb")
+  loaded = false
 
+  Miquire::Plugin.loadpath.each { |path|
+    pathname = File.join(path, "openimg", "openimg.rb")
+
+    if File.exist?(pathname) && pathname != __FILE__
+      load pathname
+      loaded = true
+
+      break
+    end
+  }
+
+  error "Loading openimg failed." unless loaded
 end
-
-
