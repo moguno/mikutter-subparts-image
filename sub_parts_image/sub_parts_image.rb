@@ -142,11 +142,13 @@ end
 Plugin.create :sub_parts_image do
   UserConfig[:subparts_image_height] ||= 200
   UserConfig[:subparts_image_tp] ||= 100
+  UserConfig[:subparts_image_round] ||= 25
 
 
   settings "インライン画像表示" do
     adjustment("高さ(px)", :subparts_image_height, 10, 999)
     adjustment("濃さ(%)", :subparts_image_tp, 0, 100)
+    adjustment("角を丸くする", :subparts_image_round, 0, 200)
   end
 
 
@@ -288,6 +290,11 @@ Plugin.create :sub_parts_image do
             context.translate((context.clip_extents[2] - icon.width * scale_xy) / 2, parts_height * i)
             context.scale(scale_xy, scale_xy)
             context.set_source_pixbuf(icon)
+
+            context.clip {
+              context.rounded_rectangle(0, 0, icon.width, icon.height, UserConfig[:subparts_image_round])
+            }
+
             context.paint(UserConfig[:subparts_image_tp] / 100.0)
           }
         end
