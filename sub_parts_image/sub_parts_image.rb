@@ -142,7 +142,7 @@ end
 Plugin.create :sub_parts_image do
   UserConfig[:subparts_image_height] ||= 200
   UserConfig[:subparts_image_tp] ||= 100
-  UserConfig[:subparts_image_round] ||= 25
+  UserConfig[:subparts_image_round] ||= 10
 
 
   settings "インライン画像表示" do
@@ -292,7 +292,8 @@ Plugin.create :sub_parts_image do
             context.set_source_pixbuf(icon)
 
             context.clip {
-              context.rounded_rectangle(0, 0, icon.width, icon.height, UserConfig[:subparts_image_round])
+              round = UserConfig[:subparts_image_round] / scale_xy
+              context.rounded_rectangle(0, 0, icon.width, icon.height, round)
             }
 
             context.paint(UserConfig[:subparts_image_tp] / 100.0)
