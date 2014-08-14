@@ -97,17 +97,22 @@ class ImageLoadHelper
       }
 
 
-      # 即ロード出来なかった -> ロード中を表示して後はコールバックに任せる
-      if image == :wait
-        main_icon = Gdk::WebImageLoader.loading_pixbuf(parts_height, parts_height).melt
+      main_icon = case image
+        # ロード失敗
+        when nil
+          Gdk::WebImageLoader.notfound_pixbuf(parts_height, parts_height).melt
 
-      # 即ロード成功
-      else
-        loader = Gdk::PixbufLoader.new
-        loader.write image
-        loader.close
+        # 即ロード出来なかった -> ロード中を表示して後はコールバックに任せる
+        when :wait
+          Gdk::WebImageLoader.loading_pixbuf(parts_height, parts_height).melt
 
-        main_icon = loader.pixbuf
+        # 即ロード成功
+        else
+          loader = Gdk::PixbufLoader.new
+          loader.write image
+          loader.close
+
+          loader.pixbuf
       end
 
       # コールバックを呼び出す
