@@ -32,7 +32,12 @@ Plugin.create :openimg do
       return url
     end
 
-    real_url = MessageConverters.expand_url_one(url)
+    # mikutter 3.1.0対策
+    real_url = begin
+      MessageConverters.expand_url_one(url)
+    rescue(NameError) => e
+      (Plugin.filtering(:expand_url, url).first.first rescue url)
+    end
 
     proc = nil
 
