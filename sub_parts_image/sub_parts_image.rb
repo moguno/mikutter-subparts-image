@@ -198,7 +198,6 @@ Plugin.create :sub_parts_image do
   class Gdk::SubPartsImage < Gdk::SubParts
     regist
 
-
     def on_image_loaded(pos, url, pixbuf)
       # イメージ取得完了
 
@@ -232,36 +231,29 @@ Plugin.create :sub_parts_image do
         # クリックイベント
         @ignore_event = false
 
-        helper.ssc(:click) { |this, e, x, y|
-          # なぜか２回連続でクリックイベントが飛んでくるのでアドホックに回避する
-          if @ignore_event 
-            next
+        if @click_sid
+           helper.signal_handler_disconnect(@click_sid)
+           @click_sid = nil
+        end
+
+        # クリック位置の特定
+        offset = helper.mainpart_height
+
+        helper.subparts.each { |part|
+          if part == self
+            break
           end
 
-          # クリック位置の特定
-          offset = helper.mainpart_height
+          offset += part.height
+        }
 
-          helper.subparts.each { |part|
-            if part == self
-              break
-            end
-
-            offset += part.height
-          }
-
+        @click_sid = helper.ssc(:click) { |this, e, x, y|
           @num.times { |i|
             # イメージをクリックした
             if (offset + (i * UserConfig[:subparts_image_height])) <= y && (offset + ((i + 1) * UserConfig[:subparts_image_height])) >= y
               case e.button
               when 1
                 Gtk::openurl(urls[i][:page_url])
-
-                @ignore_event = true
-
-                Thread.new {
-                  sleep(0.5)
-                  @ignore_event = false
-                }
               end
             end
           }
