@@ -52,6 +52,20 @@ class ImageLoadHelper
   end
 
 
+  # 生データをPixbufに変換する
+  def self.raw2pixbuf(raw, parts_height)
+    loader = Gdk::PixbufLoader.new
+    loader.write(raw)
+    loader.close
+ 
+    loader.pixbuf
+  rescue
+    puts e
+    puts e.backtrace
+    Gdk::WebImageLoader.notfound_pixbuf(parts_height, parts_height).melt
+  end
+
+
   # 画像をダウンロードする
   def self.load_start(msg)
     urls = get_image_urls(msg[:message])
@@ -72,20 +86,10 @@ class ImageLoadHelper
       image = Gdk::WebImageLoader.get_raw_data(url[:image_url]) { |data, exception|
         # 即ロード出来なかった => ロード完了
 
-        if !exception && data
-          begin
-            loader = Gdk::PixbufLoader.new
-            loader.write data
-            loader.close
- 
-            main_icon = loader.pixbuf
-          rescue => e
-            puts e
-            puts e.backtrace
-            main_icon = Gdk::WebImageLoader.notfound_pixbuf(parts_height, parts_height).melt
-          end
+        main_icon = if !exception && data
+          ImageLoadHelper.raw2pixbuf(data, parts_height)
         else
-          main_icon = Gdk::WebImageLoader.notfound_pixbuf(parts_height, parts_height).melt
+          Gdk::WebImageLoader.notfound_pixbuf(parts_height, parts_height).melt
         end
 
         if main_icon
@@ -108,11 +112,7 @@ class ImageLoadHelper
 
         # 即ロード成功
         else
-          loader = Gdk::PixbufLoader.new
-          loader.write image
-          loader.close
-
-          loader.pixbuf
+          ImageLoadHelper.raw2pixbuf(image, parts_height)
       end
 
       # コールバックを呼び出す
