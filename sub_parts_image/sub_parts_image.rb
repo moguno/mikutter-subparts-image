@@ -19,17 +19,22 @@ class ImageLoadHelper
 
   # メッセージに含まれるURLとエンティティを抽出する
   def self.extract_urls_by_message(message)
-    target = []
 
-    if message[:entities]
-      target = message[:entities][:urls].map { |m| { :url => m[:expanded_url], :entity => m } }
+    targets = [:entities, :extended_entities].inject([]) { |result, entities|
+      if message[entities]
+        if message[entities][:urls]
+          result += message[entities][:urls].map { |m| { :url => m[:expanded_url], :entity => m } }
+        end
 
-      if message[:entities][:media]
-        target += message[:entities][:media].map { |m| { :url => m[:media_url], :entity => m } }
+        if message[entities][:media]
+          result += message[entities][:media].map { |m| { :url => m[:media_url], :entity => m } }
+        end
       end
-    end
 
-    target
+      result
+    }
+
+    targets.uniq { |_| _[:url] }
   end
 
 
