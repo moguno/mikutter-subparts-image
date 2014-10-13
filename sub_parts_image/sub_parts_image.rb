@@ -17,21 +17,32 @@ class ImageLoadHelper
     end
   end
 
+
   # メッセージに含まれるURLとエンティティを抽出する
   def self.extract_urls_by_message(message)
+    entities = [
+      { :symbol => :entities, :filter => lambda { |images| images.sort { |_| _[:entity][:indices][0] } } },
+      { :symbol => :extended_entities, :filter => nil },
+    ]
 
-    targets = [:entities, :extended_entities].inject([]) { |result, entities|
-      if message[entities]
-        if message[entities][:urls]
-          result += message[entities][:urls].map { |m| { :url => m[:expanded_url], :entity => m } }
+    targets = entities.inject([]) { |result, entities|
+      symbol = entities[:symbol]
+
+      if message[symbol]
+        if message[symbol][:urls]
+          result += message[symbol][:urls].map { |m| { :url => m[:expanded_url], :entity => m } }
         end
 
-        if message[entities][:media]
-          result += message[entities][:media].map { |m| { :url => m[:media_url], :entity => m } }
+        if message[symbol][:media]
+          result += message[symbol][:media].map { |m| { :url => m[:media_url], :entity => m } }
         end
       end
 
-      result
+      if entities[:filter]
+        entities[:filter].call(result)
+      else
+        result
+      end
     }
 
     targets.uniq { |_| _[:url] }
@@ -51,7 +62,7 @@ class ImageLoadHelper
       else
         nil
       end
-    }.compact.sort { |a| a[:entity][:indices][0] } 
+    }.compact
 
     result
   end
