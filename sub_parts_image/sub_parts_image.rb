@@ -252,18 +252,18 @@ Plugin.create :sub_parts_image do
            @click_sid = nil
         end
 
-        # クリック位置の特定
-        offset = helper.mainpart_height
-
-        helper.subparts.each { |part|
-          if part == self
-            break
-          end
-
-          offset += part.height
-        }
-
         @click_sid = helper.ssc(:click) { |this, e, x, y|
+          # クリック位置の特定
+          offset = helper.mainpart_height
+
+          helper.subparts.each { |part|
+            if part == self
+              break
+            end
+
+            offset += part.height
+          }
+
           @num.times { |i|
             # イメージをクリックした
             if (offset + (i * UserConfig[:subparts_image_height])) <= y && (offset + ((i + 1) * UserConfig[:subparts_image_height])) >= y
