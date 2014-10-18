@@ -75,7 +75,7 @@ class ImageLoadHelper
     loader.close
  
     loader.pixbuf
-  rescue
+  rescue => e
     puts e
     puts e.backtrace
     Gdk::WebImageLoader.notfound_pixbuf(parts_height, parts_height).melt
