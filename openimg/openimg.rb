@@ -55,6 +55,11 @@ Plugin.create :openimg do
     }
 
     result
+  rescue => e
+    puts e
+    puts e.backtrace
+
+    nil
   end
 
   # 本物のopenimgをロードする
