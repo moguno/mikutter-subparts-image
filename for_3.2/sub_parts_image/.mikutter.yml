@@ -1,0 +1,11 @@
+---
+slug: :sub_parts_image
+depends:
+  mikutter: '3.2'
+  plugin:
+  - gtk
+  - openimg
+version: '3.3.3'
+author: moguno
+name: "subparts image"
+description: 画像をインライン表示します。
