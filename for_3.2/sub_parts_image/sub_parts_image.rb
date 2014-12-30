@@ -16,6 +16,7 @@ Plugin.create :sub_parts_image do
     adjustment("角を丸くする", :subparts_image_round, 0, 200)
   end
 
+
   defimageopener('youtube thumbnail (shrinked)', /^http:\/\/youtu.be\/([^\?\/\#]+)/) do |url|
     /^http:\/\/youtu.be\/([^\?\/\#]+)/.match(url)
     open("http://img.youtube.com/vi/#{$1}/0.jpg")
@@ -31,19 +32,18 @@ Plugin.create :sub_parts_image do
     open("http://tn-skr#{($1.to_i % 4) + 1}.smilevideo.jp/smile?i=#{$1}")
   end
 
-
   defimageopener('niconico video thumbnail', /nicovideo\.jp\/watch\/sm([0-9]+)/) do |url|
     /nicovideo\.jp\/watch\/sm([0-9]+)/.match(url)
     open("http://tn-skr#{($1.to_i % 4) + 1}.smilevideo.jp/smile?i=#{$1}")
   end
 
+
   # サブパーツ
   class Gdk::SubPartsImage < Gdk::SubParts
     regist
 
+    # イメージ取得完了
     def on_image_loaded(pos, pixbuf)
-      # イメージ取得完了
-
       if !helper.destroyed?
         # 再描画イベント
         sid = helper.ssc(:expose_event, helper) {
@@ -54,21 +54,32 @@ Plugin.create :sub_parts_image do
         }
       end
 
-      # 初回表示の場合、TLの高さを変更する
-      first_disp = @main_icons.empty?
+      # サブパーツ描画
       @main_icons[pos] = pixbuf
 
-      if first_disp
-        helper.reset_height
-      end
+      # puts "#{@helper_message[:message][0..10]} draw ready #{pos}"
 
-      # サブパーツ描画
-      helper.on_modify
+      Delayer.new {
+        # puts "#{@helper_message[:message][0..10]} draw image #{pos}"
+        helper.on_modify
+      }
     end
 
-
     def on_image_information(urls)
-      @num = urls.length
+      if urls.length == 0
+        return
+      end
+
+      @mutex.synchronize {
+        @num = urls.length
+
+        if @height_reported
+          Delayer.new {
+            # puts "#{@helper_message[:message][0..10]} reset"
+            helper.reset_height
+          }
+        end
+      }
 
       if !helper.destroyed?
         # クリックイベント
@@ -104,29 +115,51 @@ Plugin.create :sub_parts_image do
       end
     end
 
-
     def initialize(*args)
       super
+      @num = 0
+      @height_reported = false
+      @mutex = Mutex.new
       @main_icons = []
+
+      @helper_message = helper.message
+
       if message
         # イメージ読み込みスレッドを起こす
-        #ImageLoadHelper.add(message, method(:on_image_information), method(:on_image_loaded))
         Thread.new(message) { |message|
           streams = message.entity
                     .select{ |entity| %i<urls media>.include? entity[:slug] }
-                    .map{ |entity| Plugin.filtering(:openimg_raw_image_from_display_url, entity[:url], nil) }
+                    .map { |entity|
+                      case entity[:slug]
+                      when :urls
+                        entity[:expanded_url]
+                      when :media
+                        entity[:media_url]
+                      end 
+                    }.map{ |url| Plugin.filtering(:openimg_raw_image_from_display_url, url, nil) }
                     .select{ |pair| pair.last }
+
           Delayer.new{ on_image_information streams.map(&:first) }
+
           streams.each.with_index do |pair, index|
             _, stream = *pair
-            Thread.new { Gdk::PixbufLoader.open{ |loader| loader.write(stream.read) }.pixbuf }
-              .next{ |pixbuf| on_image_loaded(index, pixbuf) }
-              .trap{ |exception| error exception }
+            Thread.new { 
+              Gdk::PixbufLoader.open{ |loader|
+                # puts "#{@helper_message[:message][0..10]} load start #{index}"
+                loader.write(stream.read)
+                stream.close
+                # puts "#{@helper_message[:message][0..10]} load finish #{index}"
+              }.pixbuf
+            }.next{ |pixbuf| 
+              # puts "#{@helper_message[:message][0..10]} draw preready #{index}"
+              on_image_loaded(index, pixbuf) }
+            .trap{ |exception| 
+              # puts "#{@helper_message[:message][0..10]} #{exception}"
+            error exception }
           end
         }.trap{ |exception| error exception }
       end
     end
-
 
     # サブパーツを描画
     def render(context)
@@ -154,13 +187,12 @@ Plugin.create :sub_parts_image do
       }
     end
 
-
     def height
-      if !@main_icons.empty?
+      @mutex.synchronize {
+        @height_reported = true
+        # puts "#{@helper_message[:message][0..10]} #{@num * UserConfig[:subparts_image_height]}"
         @num * UserConfig[:subparts_image_height]
-      else
-        0
-      end
+      }
     end
 
 
