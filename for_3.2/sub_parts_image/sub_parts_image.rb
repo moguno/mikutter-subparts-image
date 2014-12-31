@@ -44,6 +44,8 @@ Plugin.create :sub_parts_image do
 
     # イメージ取得完了
     def on_image_loaded(pos, pixbuf)
+      # puts "#{@helper_message[0..10]} image loaded start #{pos}"
+
       if !helper.destroyed?
         # 再描画イベント
         sid = helper.ssc(:expose_event, helper) {
@@ -57,10 +59,10 @@ Plugin.create :sub_parts_image do
       # サブパーツ描画
       @main_icons[pos] = pixbuf
 
-      # puts "#{@helper_message[:message][0..10]} draw ready #{pos}"
+      # puts "#{@helper_message[0..10]} draw ready #{pos}"
 
       Delayer.new {
-        # puts "#{@helper_message[:message][0..10]} draw image #{pos}"
+        # puts "#{@helper_message[0..10]} draw image #{pos}"
         helper.on_modify
       }
     end
@@ -75,7 +77,7 @@ Plugin.create :sub_parts_image do
 
         if @height_reported
           Delayer.new {
-            # puts "#{@helper_message[:message][0..10]} reset"
+            # puts "#{@helper_message[0..10]} reset"
             helper.reset_height
           }
         end
@@ -122,7 +124,7 @@ Plugin.create :sub_parts_image do
       @mutex = Mutex.new
       @main_icons = []
 
-      @helper_message = helper.message
+      @helper_message = helper.message[:message]
 
       if message
         # イメージ読み込みスレッドを起こす
@@ -144,18 +146,23 @@ Plugin.create :sub_parts_image do
           streams.each.with_index do |pair, index|
             _, stream = *pair
             Thread.new { 
-              Gdk::PixbufLoader.open{ |loader|
-                # puts "#{@helper_message[:message][0..10]} load start #{index}"
+              pixbuf = Gdk::PixbufLoader.open{ |loader|
+                # puts "#{@helper_message[0..10]} load start #{index}"
                 loader.write(stream.read)
                 stream.close
-                # puts "#{@helper_message[:message][0..10]} load finish #{index}"
+                # puts "#{@helper_message[0..10]} load finish #{index}"
               }.pixbuf
-            }.next{ |pixbuf| 
-              # puts "#{@helper_message[:message][0..10]} draw preready #{index}"
-              on_image_loaded(index, pixbuf) }
-            .trap{ |exception| 
-              # puts "#{@helper_message[:message][0..10]} #{exception}"
-            error exception }
+
+              # puts "#{@helper_message[0..10]} draw preready #{index}"
+
+              Delayer.new {
+                on_image_loaded(index, pixbuf) 
+              }
+
+              # puts "#{@helper_message[0..10]} draw preready2 #{index}" 
+            }.trap{ |exception| 
+              puts "#{@helper_message[0..10]} #{exception}"
+              error exception }
           end
         }.trap{ |exception| error exception }
       end
@@ -190,7 +197,7 @@ Plugin.create :sub_parts_image do
     def height
       @mutex.synchronize {
         @height_reported = true
-        # puts "#{@helper_message[:message][0..10]} #{@num * UserConfig[:subparts_image_height]}"
+        # puts "#{@helper_message[0..10]} #{@num * UserConfig[:subparts_image_height]}"
         @num * UserConfig[:subparts_image_height]
       }
     end
