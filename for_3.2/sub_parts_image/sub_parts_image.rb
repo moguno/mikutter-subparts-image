@@ -129,16 +129,18 @@ Plugin.create :sub_parts_image do
       if message
         # イメージ読み込みスレッドを起こす
         Thread.new(message) { |message|
-          streams = message.entity
-                    .select{ |entity| %i<urls media>.include? entity[:slug] }
-                    .map { |entity|
-                      case entity[:slug]
-                      when :urls
-                        entity[:expanded_url]
-                      when :media
-                        entity[:media_url]
-                      end 
-                    }.map{ |url| Plugin.filtering(:openimg_raw_image_from_display_url, url, nil) }
+          urls = message.entity
+                 .select{ |entity| %i<urls media>.include? entity[:slug] }
+                 .map { |entity|
+                   case entity[:slug]
+                   when :urls
+                     entity[:expanded_url]
+                   when :media
+                     entity[:media_url]
+                   end 
+                 } + Array(message[:subparts_images])
+
+          streams = urls.map{ |url| Plugin.filtering(:openimg_raw_image_from_display_url, url, nil) }
                     .select{ |pair| pair.last }
 
           Delayer.new{ on_image_information streams.map(&:first) }
