@@ -5,15 +5,14 @@ require 'gtk2'
 require 'cairo'
 
 Plugin.create :sub_parts_image do
-  UserConfig[:subparts_image_height] ||= 200
   UserConfig[:subparts_image_tp] ||= 100
   UserConfig[:subparts_image_round] ||= 10
-
+  UserConfig[:subparts_image_margin] ||= 2
 
   settings "インライン画像表示" do
-    adjustment("高さ(px)", :subparts_image_height, 10, 999)
     adjustment("濃さ(%)", :subparts_image_tp, 0, 100)
     adjustment("角を丸くする", :subparts_image_round, 0, 200)
+    adjustment("マージン(px)", :subparts_image_margin, 0, 12)
   end
 
 
@@ -225,8 +224,26 @@ Plugin.create :sub_parts_image do
       else
         width = canvas_width/2
         height = 1/aspect_ratio(pos) * width
-        Gdk::Rectangle.new(width * (pos % 2), height * (pos/2).floor, width, height)
+        Gdk::Rectangle.new(width * (pos % 2), (height+UserConfig[:subparts_image_margin]) * (pos/2).floor, width, height)
       end
+    end
+
+    # rectをマージンぶんだけ縮小する。
+    # マージンを取ることでrectのサイズが0以下になる場合は、マージンを開けずに返す
+    # ==== Args
+    # [rect] Gdk::Rectangle 縮小する前の領域
+    # [margin] マージン(px)
+    # ==== Return
+    # Gdk::Rectangle 縮小した領域
+    def add_margin(rect, margin)
+      result = rect.dup
+      if rect.width > margin*2
+        result.x += margin
+        result.width -= margin*2 end
+      if rect.height > margin*2
+        result.y += margin
+        result.height -= margin*2 end
+      result
     end
 
     # 画像を切り抜くさい、どこを切り抜くかを返す
@@ -253,7 +270,7 @@ Plugin.create :sub_parts_image do
       @main_icons.compact.map.with_index { |icon, pos|
         draw_rect = image_draw_area(pos, self.width)
         crop_rect = image_crop_area(pos, icon, draw_rect)
-        [icon, draw_rect, crop_rect]
+        [icon, add_margin(draw_rect, UserConfig[:subparts_image_margin]), crop_rect]
       }.each { |icon, draw_rect, crop_rect|
         context.save {
           scale_xy = if crop_rect.width == icon.width
