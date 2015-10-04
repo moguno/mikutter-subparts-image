@@ -137,7 +137,7 @@ Plugin.create :sub_parts_image do
                      entity[:expanded_url]
                    when :media
                      entity[:media_url]
-                   end 
+                   end
                  } + Array(message[:subparts_images])
 
           streams = urls.map{ |url| Plugin.filtering(:openimg_raw_image_from_display_url, url, nil) }
@@ -147,7 +147,7 @@ Plugin.create :sub_parts_image do
 
           streams.each.with_index do |pair, index|
             _, stream = *pair
-            Thread.new { 
+            Thread.new {
               pixbuf = Gdk::PixbufLoader.open{ |loader|
                 # puts "#{@helper_message[0..10]} load start #{index}"
                 loader.write(stream.read)
@@ -158,11 +158,11 @@ Plugin.create :sub_parts_image do
               # puts "#{@helper_message[0..10]} draw preready #{index}"
 
               Delayer.new {
-                on_image_loaded(index, pixbuf) 
+                on_image_loaded(index, pixbuf)
               }
 
-              # puts "#{@helper_message[0..10]} draw preready2 #{index}" 
-            }.trap{ |exception| 
+              # puts "#{@helper_message[0..10]} draw preready2 #{index}"
+            }.trap{ |exception|
               puts "#{@helper_message[0..10]} #{exception}"
               error exception }
           end
@@ -170,23 +170,37 @@ Plugin.create :sub_parts_image do
       end
     end
 
+    # 画像を描画する座標とサイズを返す
+    # ==== Args
+    # [pos] Fixnum 画像インデックス
+    # [canvas_width] Fixnum キャンバスの幅(px)
+    # ==== Return
+    # Gdk::Rectangle その画像を描画する場所
+    def image_draw_area(pos, canvas_width)
+      Gdk::Rectangle.new(0,
+                         UserConfig[:subparts_image_height] * pos,
+                         canvas_width,
+                         UserConfig[:subparts_image_height])
+    end
+
     # サブパーツを描画
     def render(context)
-      Array(@main_icons).each_with_index { |icon, i|
+      canvas_width = context.clip_extents[2]
+      Array(@main_icons).map.with_index { |icon, pos|
+        [icon, image_draw_area(pos, canvas_width)]
+      }.each { |icon, rect|
         if icon
-          parts_height = UserConfig[:subparts_image_height]
-
           context.save {
-            width_ratio = context.clip_extents[2] / icon.width
-            height_ratio = parts_height.to_f / icon.height
+            width_ratio = Rational(rect.width, icon.width)
+            height_ratio = Rational(rect.height, icon.height)
             scale_xy = [height_ratio, width_ratio].min
 
-            context.translate((context.clip_extents[2] - icon.width * scale_xy) / 2, parts_height * i)
+            context.translate((rect.width - icon.width * scale_xy) / 2, rect.y)
             context.scale(scale_xy, scale_xy)
             context.set_source_pixbuf(icon)
 
             context.clip {
-              round = UserConfig[:subparts_image_round] / scale_xy
+              round = Rational(UserConfig[:subparts_image_round], scale_xy)
               context.rounded_rectangle(0, 0, icon.width, icon.height, round)
             }
 
