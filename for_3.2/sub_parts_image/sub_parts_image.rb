@@ -170,6 +170,12 @@ Plugin.create :sub_parts_image do
       end
     end
 
+    def aspect_ratio_x(pos)
+      16 end
+
+    def aspect_ratio_y(pos)
+      9 end
+
     # 画像を描画する座標とサイズを返す
     # ==== Args
     # [pos] Fixnum 画像インデックス
@@ -177,28 +183,53 @@ Plugin.create :sub_parts_image do
     # ==== Return
     # Gdk::Rectangle その画像を描画する場所
     def image_draw_area(pos, canvas_width)
+      height = Rational(aspect_ratio_y(pos), aspect_ratio_x(pos)) * canvas_width
       Gdk::Rectangle.new(0,
-                         UserConfig[:subparts_image_height] * pos,
+                         height * pos,
                          canvas_width,
-                         UserConfig[:subparts_image_height])
+                         height)
     end
+
+    # 画像を切り抜くさい、どこを切り抜くかを返す
+    # ==== Args
+    # [pos] Fixnum 画像インデックス
+    # [base_area] Gdk::Pixbuf|Gdk::Rectangle 画像の寸法
+    # [draw_area] Gdk::Rectangle 描画する場所の寸法
+    # ==== Return
+    # Gdk::Rectangle base_area内の切り抜く位置
+    def image_crop_area(pos, base_area, draw_area)
+      x_ratio = Rational(base_area.width, aspect_ratio_x(pos))
+      y_ratio = Rational(base_area.height, aspect_ratio_y(pos))
+      if x_ratio == y_ratio
+        Gdk::Rectangle.new(0, 0, base_area.width, base_area.height)
+      elsif x_ratio < y_ratio
+        height = Rational(base_area.width * aspect_ratio_y(pos), aspect_ratio_x(pos))
+        Gdk::Rectangle.new(0, (base_area.height - height)/2, base_area.width, height)
+      else
+        width =  Rational(base_area.height * aspect_ratio_x(pos), aspect_ratio_y(pos))
+        Gdk::Rectangle.new((base_area.width - width)/2, 0, width, base_area.height) end end
 
     # サブパーツを描画
     def render(context)
-      canvas_width = context.clip_extents[2]
       @main_icons.compact.map.with_index { |icon, pos|
-        [icon, image_draw_area(pos, canvas_width)]
-      }.each { |icon, rect|
+        draw_rect = image_draw_area(pos, self.width)
+        crop_rect = image_crop_area(pos, icon, draw_rect)
+        [icon, draw_rect, crop_rect]
+      }.each { |icon, draw_rect, crop_rect|
         context.save {
-          scale_xy = [Rational(rect.width, icon.width), Rational(rect.height, icon.height)].min
+          scale_xy = if crop_rect.width == icon.width
+                       Rational(draw_rect.width,  crop_rect.width)
+                     else
+                       Rational(draw_rect.height, crop_rect.height) end
 
-          context.translate((rect.width - icon.width * scale_xy) / 2, rect.y)
+          context.translate(draw_rect.x - (icon.width - crop_rect.width)*scale_xy/2,
+                            draw_rect.y - (icon.height - crop_rect.height)*scale_xy/2)
           context.scale(scale_xy, scale_xy)
           context.set_source_pixbuf(icon)
 
           context.clip {
             round = Rational(UserConfig[:subparts_image_round], scale_xy)
-            context.rounded_rectangle(0, 0, icon.width, icon.height, round)
+            context.rounded_rectangle(crop_rect.x, crop_rect.y, crop_rect.width, crop_rect.height, round)
           }
 
           context.paint(UserConfig[:subparts_image_tp] / 100.0)
@@ -209,8 +240,12 @@ Plugin.create :sub_parts_image do
     def height
       @mutex.synchronize {
         @height_reported = true
-        # puts "#{@helper_message[0..10]} #{@num * UserConfig[:subparts_image_height]}"
-        @num * UserConfig[:subparts_image_height]
+        if @num == 0
+          0
+        else
+          draw_rect = image_draw_area(@num-1, width)
+          draw_rect.y + draw_rect.height
+        end
       }
     end
 
