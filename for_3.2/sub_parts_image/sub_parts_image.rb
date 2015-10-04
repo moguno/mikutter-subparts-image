@@ -190,9 +190,7 @@ Plugin.create :sub_parts_image do
         [icon, image_draw_area(pos, canvas_width)]
       }.each { |icon, rect|
         context.save {
-          width_ratio = Rational(rect.width, icon.width)
-          height_ratio = Rational(rect.height, icon.height)
-          scale_xy = [height_ratio, width_ratio].min
+          scale_xy = [Rational(rect.width, icon.width), Rational(rect.height, icon.height)].min
 
           context.translate((rect.width - icon.width * scale_xy) / 2, rect.y)
           context.scale(scale_xy, scale_xy)
