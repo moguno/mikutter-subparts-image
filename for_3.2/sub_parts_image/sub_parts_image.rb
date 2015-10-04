@@ -170,11 +170,25 @@ Plugin.create :sub_parts_image do
       end
     end
 
+    def aspect_ratio(pos)
+      case @num
+      when 1, 4
+        Rational(16, 9)
+      when 2
+        Rational(1, 1)
+      when 3
+        if pos == 0
+          Rational(6, 9)
+        else
+          Rational(20, 9) end
+      else
+        Rational(16, 9) end end
+
     def aspect_ratio_x(pos)
-      16 end
+      aspect_ratio(pos).numerator end
 
     def aspect_ratio_y(pos)
-      9 end
+      aspect_ratio(pos).denominator end
 
     # 画像を描画する座標とサイズを返す
     # ==== Args
@@ -183,11 +197,30 @@ Plugin.create :sub_parts_image do
     # ==== Return
     # Gdk::Rectangle その画像を描画する場所
     def image_draw_area(pos, canvas_width)
-      height = Rational(aspect_ratio_y(pos), aspect_ratio_x(pos)) * canvas_width
-      Gdk::Rectangle.new(0,
-                         height * pos,
-                         canvas_width,
-                         height)
+      case @num
+      when 1
+        height = Rational(aspect_ratio_y(pos), aspect_ratio_x(pos)) * canvas_width
+        Gdk::Rectangle.new(0, height * pos, canvas_width, height)
+      when 2
+        width = canvas_width/2
+        height = Rational(aspect_ratio_y(pos), aspect_ratio_x(pos)) * width
+        Gdk::Rectangle.new(width * pos, 0, width, height)
+      when 3
+        if pos == 0
+          width = Rational(6,16) * canvas_width
+          height = Rational(aspect_ratio_y(pos), aspect_ratio_x(pos)) * width
+          Gdk::Rectangle.new(0, 0, width, height)
+        else
+          x = Rational(6,16) * canvas_width
+          width = canvas_width - x
+          height = Rational(aspect_ratio_y(pos), aspect_ratio_x(pos)) * width
+          Gdk::Rectangle.new(x, height * (pos-1), width, height)
+        end
+      else
+        width = canvas_width/2
+        height = Rational(aspect_ratio_y(pos), aspect_ratio_x(pos)) * width
+        Gdk::Rectangle.new(width * (pos % 2), height * (pos/2).floor, width, height)
+      end
     end
 
     # 画像を切り抜くさい、どこを切り抜くかを返す
