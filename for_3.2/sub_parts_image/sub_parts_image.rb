@@ -186,27 +186,25 @@ Plugin.create :sub_parts_image do
     # サブパーツを描画
     def render(context)
       canvas_width = context.clip_extents[2]
-      Array(@main_icons).map.with_index { |icon, pos|
+      @main_icons.compact.map.with_index { |icon, pos|
         [icon, image_draw_area(pos, canvas_width)]
       }.each { |icon, rect|
-        if icon
-          context.save {
-            width_ratio = Rational(rect.width, icon.width)
-            height_ratio = Rational(rect.height, icon.height)
-            scale_xy = [height_ratio, width_ratio].min
+        context.save {
+          width_ratio = Rational(rect.width, icon.width)
+          height_ratio = Rational(rect.height, icon.height)
+          scale_xy = [height_ratio, width_ratio].min
 
-            context.translate((rect.width - icon.width * scale_xy) / 2, rect.y)
-            context.scale(scale_xy, scale_xy)
-            context.set_source_pixbuf(icon)
+          context.translate((rect.width - icon.width * scale_xy) / 2, rect.y)
+          context.scale(scale_xy, scale_xy)
+          context.set_source_pixbuf(icon)
 
-            context.clip {
-              round = Rational(UserConfig[:subparts_image_round], scale_xy)
-              context.rounded_rectangle(0, 0, icon.width, icon.height, round)
-            }
-
-            context.paint(UserConfig[:subparts_image_tp] / 100.0)
+          context.clip {
+            round = Rational(UserConfig[:subparts_image_round], scale_xy)
+            context.rounded_rectangle(0, 0, icon.width, icon.height, round)
           }
-        end
+
+          context.paint(UserConfig[:subparts_image_tp] / 100.0)
+        }
       }
     end
 
