@@ -104,15 +104,16 @@ Plugin.create :sub_parts_image do
             offset += part.height
           }
 
-          @num.times { |i|
-            # イメージをクリックした
-            if (offset + (i * UserConfig[:subparts_image_height])) <= y && (offset + ((i + 1) * UserConfig[:subparts_image_height])) >= y
-              case e.button
-              when 1
-                Plugin.call(:openimg_open, urls[i])
-              end
-            end
-          }
+          clicked_url, = urls.lazy.with_index.map{|url, pos|
+            rect = image_draw_area(pos, self.width)
+            [url, rect.x ... rect.x+rect.width, rect.y+offset ... rect.y+offset+rect.height]
+          }.find{|url, xrange, yrange|
+            xrange.include?(x) and yrange.include?(y) }
+          case e.button
+          when 1
+            Plugin.call(:openimg_open, clicked_url) if clicked_url
+          end
+
         }
       end
     end
@@ -180,15 +181,20 @@ Plugin.create :sub_parts_image do
         if pos == 0
           Rational(6, 9)
         else
-          Rational(20, 9) end
+          Rational(20, 9)
+        end
       else
-        Rational(16, 9) end end
+        Rational(16, 9)
+      end
+    end
 
     def aspect_ratio_x(pos)
-      aspect_ratio(pos).numerator end
+      aspect_ratio(pos).numerator
+    end
 
     def aspect_ratio_y(pos)
-      aspect_ratio(pos).denominator end
+      aspect_ratio(pos).denominator
+    end
 
     # 画像を描画する座標とサイズを返す
     # ==== Args
@@ -199,26 +205,26 @@ Plugin.create :sub_parts_image do
     def image_draw_area(pos, canvas_width)
       case @num
       when 1
-        height = Rational(aspect_ratio_y(pos), aspect_ratio_x(pos)) * canvas_width
+        height = 1/aspect_ratio(pos) * canvas_width
         Gdk::Rectangle.new(0, height * pos, canvas_width, height)
       when 2
         width = canvas_width/2
-        height = Rational(aspect_ratio_y(pos), aspect_ratio_x(pos)) * width
+        height = 1/aspect_ratio(pos) * width
         Gdk::Rectangle.new(width * pos, 0, width, height)
       when 3
         if pos == 0
           width = Rational(6,16) * canvas_width
-          height = Rational(aspect_ratio_y(pos), aspect_ratio_x(pos)) * width
+          height = 1/aspect_ratio(pos) * width
           Gdk::Rectangle.new(0, 0, width, height)
         else
           x = Rational(6,16) * canvas_width
           width = canvas_width - x
-          height = Rational(aspect_ratio_y(pos), aspect_ratio_x(pos)) * width
+          height = 1/aspect_ratio(pos) * width
           Gdk::Rectangle.new(x, height * (pos-1), width, height)
         end
       else
         width = canvas_width/2
-        height = Rational(aspect_ratio_y(pos), aspect_ratio_x(pos)) * width
+        height = 1/aspect_ratio(pos) * width
         Gdk::Rectangle.new(width * (pos % 2), height * (pos/2).floor, width, height)
       end
     end
