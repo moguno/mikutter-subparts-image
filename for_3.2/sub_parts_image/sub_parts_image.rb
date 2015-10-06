@@ -76,7 +76,6 @@ Plugin.create :sub_parts_image do
 
         if @height_reported
           Delayer.new {
-            # puts "#{@helper_message[0..10]} reset"
             helper.reset_height
           }
         end
@@ -87,8 +86,8 @@ Plugin.create :sub_parts_image do
         @ignore_event = false
 
         if @click_sid
-           helper.signal_handler_disconnect(@click_sid)
-           @click_sid = nil
+          helper.signal_handler_disconnect(@click_sid)
+          @click_sid = nil
         end
 
         @click_sid = helper.ssc(:click) { |this, e, x, y|
@@ -224,7 +223,7 @@ Plugin.create :sub_parts_image do
       else
         width = canvas_width/2
         height = 1/aspect_ratio(pos) * width
-        Gdk::Rectangle.new(width * (pos % 2), (height+UserConfig[:subparts_image_margin]) * (pos/2).floor, width, height)
+        Gdk::Rectangle.new(width * (pos % 2), (height + UserConfig[:subparts_image_margin]) * (pos/2).floor, width, height)
       end
     end
 
@@ -237,12 +236,14 @@ Plugin.create :sub_parts_image do
     # Gdk::Rectangle 縮小した領域
     def add_margin(rect, margin)
       result = rect.dup
-      if rect.width > margin*2
+      if rect.width > margin * 2
         result.x += margin
-        result.width -= margin*2 end
-      if rect.height > margin*2
+        result.width -= margin * 2
+      end
+      if rect.height > margin * 2
         result.y += margin
-        result.height -= margin*2 end
+        result.height -= margin * 2
+      end
       result
     end
 
@@ -263,7 +264,9 @@ Plugin.create :sub_parts_image do
         Gdk::Rectangle.new(0, (base_area.height - height)/2, base_area.width, height)
       else
         width =  Rational(base_area.height * aspect_ratio_x(pos), aspect_ratio_y(pos))
-        Gdk::Rectangle.new((base_area.width - width)/2, 0, width, base_area.height) end end
+        Gdk::Rectangle.new((base_area.width - width)/2, 0, width, base_area.height)
+      end
+    end
 
     # サブパーツを描画
     def render(context)
@@ -274,9 +277,10 @@ Plugin.create :sub_parts_image do
       }.each { |icon, draw_rect, crop_rect|
         context.save {
           scale_xy = if crop_rect.width == icon.width
-                       Rational(draw_rect.width,  crop_rect.width)
-                     else
-                       Rational(draw_rect.height, crop_rect.height) end
+            Rational(draw_rect.width,  crop_rect.width)
+          else
+            Rational(draw_rect.height, crop_rect.height) 
+          end
 
           context.translate(draw_rect.x - (icon.width - crop_rect.width)*scale_xy/2,
                             draw_rect.y - (icon.height - crop_rect.height)*scale_xy/2)
