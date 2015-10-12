@@ -274,19 +274,16 @@ Plugin.create :sub_parts_image do
         [icon, add_margin(draw_rect, UserConfig[:subparts_image_margin]), crop_rect]
       }.each { |icon, draw_rect, crop_rect|
         context.save {
-          scale_xy = if crop_rect.width == icon.width
-            Rational(draw_rect.width,  crop_rect.width)
-          else
-            Rational(draw_rect.height, crop_rect.height) 
-          end
+          scale_x = Rational(draw_rect.width, crop_rect.width)
+          scale_y = Rational(draw_rect.height, crop_rect.height) 
 
-          context.translate(draw_rect.x - (icon.width - crop_rect.width) * scale_xy / 2,
-                            draw_rect.y - (icon.height - crop_rect.height) * scale_xy / 2)
-          context.scale(scale_xy, scale_xy)
+          context.translate(draw_rect.x - (icon.width - crop_rect.width) * scale_x / 2,
+                            draw_rect.y - (icon.height - crop_rect.height) * scale_y / 2)
+          context.scale(scale_x, scale_y)
           context.set_source_pixbuf(icon)
 
           context.clip {
-            round = Rational(UserConfig[:subparts_image_round], scale_xy)
+            round = Rational(UserConfig[:subparts_image_round], scale_x)
             context.rounded_rectangle(crop_rect.x, crop_rect.y, crop_rect.width, crop_rect.height, round)
           }
 
