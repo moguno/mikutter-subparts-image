@@ -66,6 +66,7 @@ Plugin.create :sub_parts_image do
       }
     end
 
+    # 画像URLが解決したタイミング
     def on_image_information(urls)
       if urls.length == 0
         return
@@ -116,6 +117,7 @@ Plugin.create :sub_parts_image do
       end
     end
 
+    # コンストラクタ
     def initialize(*args)
       super
       @num = 0
@@ -148,27 +150,23 @@ Plugin.create :sub_parts_image do
             _, stream = *pair
             Thread.new {
               pixbuf = Gdk::PixbufLoader.open{ |loader|
-                # puts "#{@helper_message[0..10]} load start #{index}"
                 loader.write(stream.read)
                 stream.close
-                # puts "#{@helper_message[0..10]} load finish #{index}"
               }.pixbuf
-
-              # puts "#{@helper_message[0..10]} draw preready #{index}"
 
               Delayer.new {
                 on_image_loaded(index, pixbuf)
               }
-
-              # puts "#{@helper_message[0..10]} draw preready2 #{index}"
             }.trap{ |exception|
               puts "#{@helper_message[0..10]} #{exception}"
-              error exception }
+              error exception
+            }
           end
         }.trap{ |exception| error exception }
       end
     end
 
+    # 画像表示位置をキーにアスペクト比を求める
     def aspect_ratio(pos)
       case @num
       when 1, 4
@@ -203,27 +201,27 @@ Plugin.create :sub_parts_image do
     def image_draw_area(pos, canvas_width)
       case @num
       when 1
-        height = 1/aspect_ratio(pos) * canvas_width
+        height = 1 / aspect_ratio(pos) * canvas_width
         Gdk::Rectangle.new(0, height * pos, canvas_width, height)
       when 2
-        width = canvas_width/2
-        height = 1/aspect_ratio(pos) * width
+        width = canvas_width / 2
+        height = 1 / aspect_ratio(pos) * width
         Gdk::Rectangle.new(width * pos, 0, width, height)
       when 3
         if pos == 0
-          width = Rational(6,16) * canvas_width
-          height = 1/aspect_ratio(pos) * width
+          width = Rational(6, 16) * canvas_width
+          height = 1 / aspect_ratio(pos) * width
           Gdk::Rectangle.new(0, 0, width, height)
         else
-          x = Rational(6,16) * canvas_width
+          x = Rational(6, 16) * canvas_width
           width = canvas_width - x
-          height = 1/aspect_ratio(pos) * width
-          Gdk::Rectangle.new(x, height * (pos-1), width, height)
+          height = 1 / aspect_ratio(pos) * width
+          Gdk::Rectangle.new(x, height * (pos - 1), width, height)
         end
       else
-        width = canvas_width/2
-        height = 1/aspect_ratio(pos) * width
-        Gdk::Rectangle.new(width * (pos % 2), (height + UserConfig[:subparts_image_margin]) * (pos/2).floor, width, height)
+        width = canvas_width / 2
+        height = 1 / aspect_ratio(pos) * width
+        Gdk::Rectangle.new(width * (pos % 2), (height + UserConfig[:subparts_image_margin]) * (pos / 2).floor, width, height)
       end
     end
 
@@ -261,10 +259,10 @@ Plugin.create :sub_parts_image do
         Gdk::Rectangle.new(0, 0, base_area.width, base_area.height)
       elsif x_ratio < y_ratio
         height = Rational(base_area.width * aspect_ratio_y(pos), aspect_ratio_x(pos))
-        Gdk::Rectangle.new(0, (base_area.height - height)/2, base_area.width, height)
+        Gdk::Rectangle.new(0, (base_area.height - height) / 2, base_area.width, height)
       else
-        width =  Rational(base_area.height * aspect_ratio_x(pos), aspect_ratio_y(pos))
-        Gdk::Rectangle.new((base_area.width - width)/2, 0, width, base_area.height)
+        width = Rational(base_area.height * aspect_ratio_x(pos), aspect_ratio_y(pos))
+        Gdk::Rectangle.new((base_area.width - width) / 2, 0, width, base_area.height)
       end
     end
 
@@ -282,8 +280,8 @@ Plugin.create :sub_parts_image do
             Rational(draw_rect.height, crop_rect.height) 
           end
 
-          context.translate(draw_rect.x - (icon.width - crop_rect.width)*scale_xy/2,
-                            draw_rect.y - (icon.height - crop_rect.height)*scale_xy/2)
+          context.translate(draw_rect.x - (icon.width - crop_rect.width) * scale_xy / 2,
+                            draw_rect.y - (icon.height - crop_rect.height) * scale_xy / 2)
           context.scale(scale_xy, scale_xy)
           context.set_source_pixbuf(icon)
 
@@ -303,7 +301,7 @@ Plugin.create :sub_parts_image do
         if @num == 0
           0
         else
-          draw_rect = image_draw_area(@num-1, width)
+          draw_rect = image_draw_area(@num - 1, width)
           draw_rect.y + draw_rect.height
         end
       }
