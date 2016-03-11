@@ -337,16 +337,17 @@ Plugin.create :sub_parts_image do
       else
         icon = @main_icons[@draw_pos]
 
-        scale_x = width.to_f / icon.width.to_f
-        scale_y = height.to_f / icon.height.to_f
+	area_rect = add_margin(Gdk::Rectangle.new(0, 0, width, height), UserConfig[:subparts_image_margin])
+
+        scale_x = area_rect.width.to_f / icon.width.to_f
+        scale_y = area_rect.height.to_f / icon.height.to_f
 
 	scale = [scale_x, scale_y].min
 
-	start_x = (width.to_f - (icon.width.to_f * scale)) / 2
-	start_y = (height.to_f - (icon.height.to_f * scale)) / 2
+	start_x = area_rect.x.to_f + (area_rect.width.to_f - (icon.width.to_f * scale)) / 2.0
+	start_y = area_rect.y.to_f + (area_rect.height.to_f - (icon.height.to_f * scale)) / 2.0
 
-	draw_rect = add_margin(Gdk::Rectangle.new(start_x, start_y, icon.width.to_f * scale, icon.height.to_f * scale), UserConfig[:subparts_image_margin])
-
+	draw_rect = Gdk::Rectangle.new(start_x.round, start_y.round, icon.width.to_f * scale, icon.height.to_f * scale)
 
         context.clip {
           round = UserConfig[:subparts_image_round]
