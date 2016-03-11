@@ -41,6 +41,28 @@ Plugin.create :sub_parts_image do
   class Gdk::SubPartsImage < Gdk::SubParts
     regist
 
+    # クリック位置の特定
+    def get_pointed_image_pos(x, y)
+      offset = helper.mainpart_height
+
+      helper.subparts.each { |part|
+        if part == self
+          break
+        end
+
+        offset += part.height
+      }
+
+      pointed_pos, = @num.times.each.map { |pos|
+        rect = image_draw_area(pos, self.width)
+        [pos, rect.x ... rect.x + rect.width, rect.y + offset ... rect.y + offset + rect.height]
+      }.find { |url, xrange, yrange|
+        xrange.include?(x) and yrange.include?(y) 
+      }
+
+      pointed_pos
+    end 
+
     # イメージ取得完了
     def on_image_loaded(pos, pixbuf)
       # puts "#{@helper_message[0..10]} image loaded start #{pos}"
@@ -92,28 +114,47 @@ Plugin.create :sub_parts_image do
         end
 
         @click_sid = helper.ssc(:click) { |this, e, x, y|
-          # クリック位置の特定
-          offset = helper.mainpart_height
+	  pos = get_pointed_image_pos(x, y)
 
-          helper.subparts.each { |part|
-            if part == self
-              break
+	  if pos
+            clicked_url = urls[pos]
+
+            case e.button
+            when 1
+              Plugin.call(:openimg_open, clicked_url) if clicked_url
             end
-
-            offset += part.height
-          }
-
-          clicked_url, = urls.lazy.with_index.map{|url, pos|
-            rect = image_draw_area(pos, self.width)
-            [url, rect.x ... rect.x+rect.width, rect.y+offset ... rect.y+offset+rect.height]
-          }.find{|url, xrange, yrange|
-            xrange.include?(x) and yrange.include?(y) }
-          case e.button
-          when 1
-            Plugin.call(:openimg_open, clicked_url) if clicked_url
-          end
-
+	  end
         }
+
+        if @motion_sid
+          helper.signal_handler_disconnect(@motion_sid)
+          @motion_sid = nil
+        end
+
+	@motion_event = helper.ssc(:motion_notify_event) { |this, x, y|
+	  pos = get_pointed_image_pos(x, y)
+
+          if @draw_pos != pos
+            @draw_pos = pos
+
+	    Delayer.new {
+              helper.on_modify
+	    }
+	  end
+	}
+
+        if @leave_sid
+          helper.signal_handler_disconnect(@leave_sid)
+          @leave_sid = nil
+        end
+
+	@leave_sid = helper.ssc(:leave_notify_event) { |this|
+          @draw_pos = nil
+
+	  Delayer.new {
+            helper.on_modify
+	  }
+	}
       end
     end
 
@@ -268,28 +309,56 @@ Plugin.create :sub_parts_image do
 
     # サブパーツを描画
     def render(context)
-      @main_icons.compact.map.with_index { |icon, pos|
-        draw_rect = image_draw_area(pos, self.width)
-        crop_rect = image_crop_area(pos, icon, draw_rect)
-        [icon, add_margin(draw_rect, UserConfig[:subparts_image_margin]), crop_rect]
-      }.each { |icon, draw_rect, crop_rect|
-        context.save {
-          scale_x = Rational(draw_rect.width, crop_rect.width)
-          scale_y = Rational(draw_rect.height, crop_rect.height) 
+      # 全画像プレビュー
+      if !@draw_pos
+        @main_icons.compact.map.with_index { |icon, pos|
+          draw_rect = image_draw_area(pos, self.width)
+          crop_rect = image_crop_area(pos, icon, draw_rect)
+          [icon, add_margin(draw_rect, UserConfig[:subparts_image_margin]), crop_rect]
+        }.each { |icon, draw_rect, crop_rect|
+          context.save {
+            scale_x = Rational(draw_rect.width, crop_rect.width)
+            scale_y = Rational(draw_rect.height, crop_rect.height) 
 
-          context.translate(draw_rect.x - (icon.width - crop_rect.width) * scale_x / 2,
-                            draw_rect.y - (icon.height - crop_rect.height) * scale_y / 2)
-          context.scale(scale_x, scale_y)
-          context.set_source_pixbuf(icon)
+            context.translate(draw_rect.x - (icon.width - crop_rect.width) * scale_x / 2,
+                              draw_rect.y - (icon.height - crop_rect.height) * scale_y / 2)
 
-          context.clip {
-            round = Rational(UserConfig[:subparts_image_round], scale_x)
-            context.rounded_rectangle(crop_rect.x, crop_rect.y, crop_rect.width, crop_rect.height, round)
+            context.scale(scale_x, scale_y)
+            context.set_source_pixbuf(icon)
+
+            context.clip {
+              round = Rational(UserConfig[:subparts_image_round], scale_x)
+              context.rounded_rectangle(crop_rect.x, crop_rect.y, crop_rect.width, crop_rect.height, round)
+            }
+
+            context.paint(UserConfig[:subparts_image_tp] / 100.0)
           }
-
-          context.paint(UserConfig[:subparts_image_tp] / 100.0)
         }
-      }
+      else
+        icon = @main_icons[@draw_pos]
+
+        scale_x = width.to_f / icon.width.to_f
+        scale_y = height.to_f / icon.height.to_f
+
+	scale = [scale_x, scale_y].min
+
+	start_x = (width.to_f - (icon.width.to_f * scale)) / 2
+	start_y = (height.to_f - (icon.height.to_f * scale)) / 2
+
+	draw_rect = add_margin(Gdk::Rectangle.new(start_x, start_y, icon.width.to_f * scale, icon.height.to_f * scale), UserConfig[:subparts_image_margin])
+
+
+        context.clip {
+          round = UserConfig[:subparts_image_round]
+          context.rounded_rectangle(draw_rect.x, draw_rect.y, draw_rect.width, draw_rect.height, round)
+        }
+
+        context.translate(draw_rect.x, draw_rect.y)
+        context.scale(scale, scale)
+        context.set_source_pixbuf(icon)
+
+        context.paint(UserConfig[:subparts_image_tp] / 100.0)
+      end
     end
 
     def height
