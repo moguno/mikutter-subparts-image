@@ -4,7 +4,7 @@ miquire :mui, 'sub_parts_helper'
 require 'gtk2'
 require 'cairo'
 
-Plugin.create :sub_parts_image do
+Plugin.create :"mikutter-subparts-image" do
   UserConfig[:subparts_image_tp] ||= 100
   UserConfig[:subparts_image_round] ||= 10
   UserConfig[:subparts_image_margin] ||= 2
