@@ -57,11 +57,11 @@ Plugin.create :"mikutter-subparts-image" do
         rect = image_draw_area(pos, self.width)
         [pos, rect.x ... rect.x + rect.width, rect.y + offset ... rect.y + offset + rect.height]
       }.find { |url, xrange, yrange|
-        xrange.include?(x) and yrange.include?(y) 
+        xrange.include?(x) and yrange.include?(y)
       }
 
       pointed_pos
-    end 
+    end
 
     # イメージ取得完了
     def on_image_loaded(pos, pixbuf)
@@ -114,16 +114,16 @@ Plugin.create :"mikutter-subparts-image" do
         end
 
         @click_sid = helper.ssc(:click) { |this, e, x, y|
-	  pos = get_pointed_image_pos(x, y)
+          pos = get_pointed_image_pos(x, y)
 
-	  if pos
+          if pos
             clicked_url = urls[pos]
 
             case e.button
             when 1
               Plugin.call(:openimg_open, clicked_url) if clicked_url
             end
-	  end
+          end
         }
 
         if @motion_sid
@@ -131,30 +131,30 @@ Plugin.create :"mikutter-subparts-image" do
           @motion_sid = nil
         end
 
-	@motion_event = helper.ssc(:motion_notify_event) { |this, x, y|
-	  pos = get_pointed_image_pos(x, y)
+        @motion_event = helper.ssc(:motion_notify_event) { |this, x, y|
+          pos = get_pointed_image_pos(x, y)
 
           if @draw_pos != pos
             @draw_pos = pos
 
-	    Delayer.new {
+            Delayer.new {
               helper.on_modify
-	    }
-	  end
-	}
+            }
+          end
+        }
 
         if @leave_sid
           helper.signal_handler_disconnect(@leave_sid)
           @leave_sid = nil
         end
 
-	@leave_sid = helper.ssc(:leave_notify_event) { |this|
+        @leave_sid = helper.ssc(:leave_notify_event) { |this|
           @draw_pos = nil
 
-	  Delayer.new {
+          Delayer.new {
             helper.on_modify
-	  }
-	}
+          }
+        }
       end
     end
 
@@ -318,7 +318,7 @@ Plugin.create :"mikutter-subparts-image" do
         }.each { |icon, draw_rect, crop_rect|
           context.save {
             scale_x = Rational(draw_rect.width, crop_rect.width)
-            scale_y = Rational(draw_rect.height, crop_rect.height) 
+            scale_y = Rational(draw_rect.height, crop_rect.height)
 
             context.translate(draw_rect.x - (icon.width - crop_rect.width) * scale_x / 2,
                               draw_rect.y - (icon.height - crop_rect.height) * scale_y / 2)
@@ -342,12 +342,12 @@ Plugin.create :"mikutter-subparts-image" do
         scale_x = area_rect.width.to_f / icon.width.to_f
         scale_y = area_rect.height.to_f / icon.height.to_f
 
-	scale = [scale_x, scale_y].min
+        scale = [scale_x, scale_y].min
 
-	start_x = area_rect.x.to_f + (area_rect.width.to_f - (icon.width.to_f * scale)) / 2.0
-	start_y = area_rect.y.to_f + (area_rect.height.to_f - (icon.height.to_f * scale)) / 2.0
+        start_x = area_rect.x.to_f + (area_rect.width.to_f - (icon.width.to_f * scale)) / 2.0
+        start_y = area_rect.y.to_f + (area_rect.height.to_f - (icon.height.to_f * scale)) / 2.0
 
-	draw_rect = Gdk::Rectangle.new(start_x.round, start_y.round, icon.width.to_f * scale, icon.height.to_f * scale)
+draw_rect = Gdk::Rectangle.new(start_x.round, start_y.round, icon.width.to_f * scale, icon.height.to_f * scale)
 
         context.clip {
           round = UserConfig[:subparts_image_round]
