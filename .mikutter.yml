@@ -5,7 +5,7 @@ depends:
   plugin:
   - gtk
   - openimg
-version: '6.0.0'
+version: '6.0.1'
 author: moguno
 name: "subparts image"
 description: 画像をインライン表示します。
