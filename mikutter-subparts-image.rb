@@ -190,10 +190,10 @@ Plugin.create :"mikutter-subparts-image" do
           streams.each.with_index do |pair, index|
             _, stream = *pair
             Thread.new {
-              pixbuf = Gdk::PixbufLoader.open{ |loader|
-                loader.write(stream.read)
-                stream.close
-              }.pixbuf
+              loader = Gdk::PixbufLoader.new
+              loader.last_write(stream.read)
+              stream.close
+              pixbuf = loader.pixbuf
 
               Delayer.new {
                 on_image_loaded(index, pixbuf)
