@@ -39,7 +39,7 @@ Plugin.create :"mikutter-subparts-image" do
 
   # サブパーツ
   class Gdk::SubPartsImage < Gdk::SubParts
-    regist
+    register
 
     # クリック位置の特定
     def get_pointed_image_pos(x, y)
