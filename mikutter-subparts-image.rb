@@ -9,10 +9,10 @@ Plugin.create :"mikutter-subparts-image" do
   UserConfig[:subparts_image_round] ||= 10
   UserConfig[:subparts_image_margin] ||= 2
 
-  settings "インライン画像表示" do
-    adjustment("濃さ(%)", :subparts_image_tp, 0, 100)
-    adjustment("角を丸くする", :subparts_image_round, 0, 200)
-    adjustment("マージン(px)", :subparts_image_margin, 0, 12)
+  settings _("インライン画像表示") do
+    adjustment(_("濃さ(%)"), :subparts_image_tp, 0, 100)
+    adjustment(_("角を丸くする"), :subparts_image_round, 0, 200)
+    adjustment(_("マージン(px)"), :subparts_image_margin, 0, 12)
   end
 
 
@@ -39,7 +39,7 @@ Plugin.create :"mikutter-subparts-image" do
 
   # サブパーツ
   class Gdk::SubPartsImage < Gdk::SubParts
-    regist
+    register
 
     # クリック位置の特定
     def get_pointed_image_pos(x, y)

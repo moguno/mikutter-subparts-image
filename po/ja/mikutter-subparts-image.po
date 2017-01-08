@@ -1,0 +1,31 @@
+# Japanese translations for mikutter-subparts-image package
+# mikutter-subparts-image パッケージに対する英訳.
+# Copyright (C) 2017 THE mikutter-subparts-image'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the mikutter-subparts-image package.
+# moguno <sns@0kn.sakura.ne.jp>, 2017.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: mikutter-subparts-image 6.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2017-01-08 22:12+0900\n"
+"PO-Revision-Date: 2017-01-08 22:23+0900\n"
+"Last-Translator: moguno <sns@0kn.sakura.ne.jp>\n"
+"Language-Team: Japanese\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "インライン画像表示"
+msgstr "インライン画像表示"
+
+msgid "濃さ(%)"
+msgstr "濃さ(%)"
+
+msgid "角を丸くする"
+msgstr "角を丸くする"
+
+msgid "マージン(px)"
+msgstr "マージン(px)"
