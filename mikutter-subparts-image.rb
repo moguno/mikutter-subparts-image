@@ -310,7 +310,7 @@ Plugin.create :"mikutter-subparts-image" do
     # サブパーツを描画
     def render(context)
       # 全画像プレビュー
-      if !@draw_pos
+      if !(@draw_pos && @main_icons[@draw_pos])
         @main_icons.compact.map.with_index { |icon, pos|
           draw_rect = image_draw_area(pos, self.width)
           crop_rect = image_crop_area(pos, icon, draw_rect)
