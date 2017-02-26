@@ -6,7 +6,7 @@ depends:
   - gtk
   - openimg
   - uitranslator
-version: '6.2.2'
+version: '6.3.1'
 author: moguno
 name: "subparts image"
 description: 画像をインライン表示します。
