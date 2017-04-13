@@ -294,16 +294,22 @@ Plugin.create :"mikutter-subparts-image" do
     # ==== Return
     # Gdk::Rectangle base_area内の切り抜く位置
     def image_crop_area(pos, base_area, draw_area)
-      x_ratio = Rational(base_area.width, aspect_ratio_x(pos))
-      y_ratio = Rational(base_area.height, aspect_ratio_y(pos))
-      if x_ratio == y_ratio
-        Gdk::Rectangle.new(0, 0, base_area.width, base_area.height)
-      elsif x_ratio < y_ratio
-        height = Rational(base_area.width * aspect_ratio_y(pos), aspect_ratio_x(pos))
-        Gdk::Rectangle.new(0, (base_area.height - height) / 2, base_area.width, height)
-      else
-        width = Rational(base_area.height * aspect_ratio_x(pos), aspect_ratio_y(pos))
-        Gdk::Rectangle.new((base_area.width - width) / 2, 0, width, base_area.height)
+      aspect_x = aspect_ratio_x(pos)
+      aspect_y = aspect_ratio_y(pos)
+      begin
+        x_ratio = Rational(base_area.width, aspect_x)
+        y_ratio = Rational(base_area.height, aspect_y)
+        if x_ratio == y_ratio
+          Gdk::Rectangle.new(0, 0, base_area.width, base_area.height)
+        elsif x_ratio < y_ratio
+          height = Rational(base_area.width * aspect_y, aspect_x)
+          Gdk::Rectangle.new(0, (base_area.height - height) / 2, base_area.width, height)
+        else
+          width = Rational(base_area.height * aspect_x, aspect_y)
+          Gdk::Rectangle.new((base_area.width - width) / 2, 0, width, base_area.height)
+        end
+      rescue ZeroDivisionError => err
+        error err
       end
     end
 
@@ -317,19 +323,23 @@ Plugin.create :"mikutter-subparts-image" do
           [icon, add_margin(draw_rect, UserConfig[:subparts_image_margin]), crop_rect]
         }.each { |icon, draw_rect, crop_rect|
           context.save {
-            scale_x = Rational(draw_rect.width, crop_rect.width)
-            scale_y = Rational(draw_rect.height, crop_rect.height)
+            begin
+              scale_x = Rational(draw_rect.width, crop_rect.width)
+              scale_y = Rational(draw_rect.height, crop_rect.height)
 
-            context.translate(draw_rect.x - (icon.width - crop_rect.width) * scale_x / 2,
-                              draw_rect.y - (icon.height - crop_rect.height) * scale_y / 2)
+              context.translate(draw_rect.x - (icon.width - crop_rect.width) * scale_x / 2,
+                                draw_rect.y - (icon.height - crop_rect.height) * scale_y / 2)
 
-            context.scale(scale_x, scale_y)
-            context.set_source_pixbuf(icon)
+              context.scale(scale_x, scale_y)
+              context.set_source_pixbuf(icon)
 
-            context.clip {
-              round = Rational(UserConfig[:subparts_image_round], scale_x)
-              context.rounded_rectangle(crop_rect.x, crop_rect.y, crop_rect.width, crop_rect.height, round)
-            }
+              context.clip {
+                round = Rational(UserConfig[:subparts_image_round], scale_x)
+                context.rounded_rectangle(crop_rect.x, crop_rect.y, crop_rect.width, crop_rect.height, round)
+              }
+            rescue ZeroDivisionError => err
+              error err
+            end
 
             context.paint(UserConfig[:subparts_image_tp] / 100.0)
           }
@@ -337,7 +347,7 @@ Plugin.create :"mikutter-subparts-image" do
       else
         icon = @main_icons[@draw_pos]
 
-	area_rect = add_margin(Gdk::Rectangle.new(0, 0, width, height), UserConfig[:subparts_image_margin])
+        area_rect = add_margin(Gdk::Rectangle.new(0, 0, width, height), UserConfig[:subparts_image_margin])
 
         scale_x = area_rect.width.to_f / icon.width.to_f
         scale_y = area_rect.height.to_f / icon.height.to_f
@@ -347,7 +357,7 @@ Plugin.create :"mikutter-subparts-image" do
         start_x = area_rect.x.to_f + (area_rect.width.to_f - (icon.width.to_f * scale)) / 2.0
         start_y = area_rect.y.to_f + (area_rect.height.to_f - (icon.height.to_f * scale)) / 2.0
 
-draw_rect = Gdk::Rectangle.new(start_x.round, start_y.round, icon.width.to_f * scale, icon.height.to_f * scale)
+        draw_rect = Gdk::Rectangle.new(start_x.round, start_y.round, icon.width.to_f * scale, icon.height.to_f * scale)
 
         context.clip {
           round = UserConfig[:subparts_image_round]
