@@ -171,16 +171,21 @@ Plugin.create :"mikutter-subparts-image" do
       if message
         # イメージ読み込みスレッドを起こす
         Thread.new(message) { |message|
-          urls = message.entity
-                 .select{ |entity| %i<urls media>.include? entity[:slug] }
-                 .map { |entity|
-                   case entity[:slug]
-                   when :urls
-                     entity[:expanded_url]
-                   when :media
-                     entity[:media_url]
-                   end
-                 } + Array(message[:subparts_images])
+          # mikutter3.5か否かを判断
+          urls = if message.links.is_a?(Retriever::Entity::BlankEntity)
+            message.links.map { |_| _[:url] }
+          else
+            message.entity
+              .select{ |entity| %i<urls media>.include? entity[:slug] }
+              .map { |entity|
+                case entity[:slug]
+                when :urls
+                  entity[:expanded_url]
+                when :media
+                  entity[:media_url]
+                end
+              }
+          end + Array(message[:subparts_images])
 
           streams = urls.map{ |url| Plugin.filtering(:openimg_raw_image_from_display_url, url, nil) }
                     .select{ |pair| pair.last }
