@@ -171,13 +171,19 @@ Plugin.create :"mikutter-subparts-image" do
       if message
         # イメージ読み込みスレッドを起こす
         Thread.new(message) { |message|
-          # mikutter3.5か否かを判断
-          urls = if message.links.is_a?(Retriever::Entity::BlankEntity)
-            message.links.map { |_| _[:url] }
-          else
-            message.entity
-              .select{ |entity| %i<urls media>.include? entity[:slug] }
-              .map { |entity|
+          urls =
+            case
+            when Plugin.instance_exist?(:score)
+              # mikutter 3.7以降
+              Plugin[:"mikutter-subparts-image"].score_of(message).map(&:uri)
+            when message.links.is_a?(Retriever::Entity::BlankEntity)
+              # mikutter3.5以降
+              message.links.map { |_| _[:url] }
+            else
+              # mikutter 3.5未満
+              message.entity
+                .select{ |entity| %i<urls media>.include? entity[:slug] }
+                .map { |entity|
                 case entity[:slug]
                 when :urls
                   entity[:expanded_url]
@@ -185,9 +191,9 @@ Plugin.create :"mikutter-subparts-image" do
                   entity[:media_url]
                 end
               }
-          end + Array(message[:subparts_images])
+            end + Array(message[:subparts_images])
 
-          streams = urls.map{ |url| Plugin.filtering(:openimg_raw_image_from_display_url, url, nil) }
+          streams = urls.map{ |url| Plugin.filtering(:openimg_raw_image_from_display_url, url.to_s, nil) }
                     .select{ |pair| pair.last }
 
           Delayer.new{ on_image_information streams.map(&:first) }
