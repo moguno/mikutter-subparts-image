@@ -176,7 +176,7 @@ Plugin.create :"mikutter-subparts-image" do
             when Plugin.instance_exist?(:score)
               # mikutter 3.7以降
               Plugin[:"mikutter-subparts-image"].score_of(message).map(&:uri)
-            when message.links.is_a?(Retriever::Entity::BlankEntity)
+            when (defined?(Retriever::Entity) and message.links.is_a?(Retriever::Entity::BlankEntity))
               # mikutter3.5以降
               message.links.map { |_| _[:url] }
             else
@@ -214,7 +214,10 @@ Plugin.create :"mikutter-subparts-image" do
               error exception
             }
           end
-        }.trap{ |exception| error exception }
+        }.trap{ |exception| 
+puts "------------------------------------------124124S"
+puts exception
+error exception }
       end
     end
 
