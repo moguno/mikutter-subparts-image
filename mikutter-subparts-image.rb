@@ -103,8 +103,6 @@ Plugin.create :"mikutter-subparts-image" do
       }
 
       # クリックイベント
-      @ignore_event = false
-
       if @click_sid
         helper.signal_handler_disconnect(@click_sid)
         @click_sid = nil
