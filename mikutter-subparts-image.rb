@@ -90,7 +90,7 @@ Plugin.create :"mikutter-subparts-image" do
 
     # 画像URLが解決したタイミング
     def on_image_information(urls)
-      if urls.length == 0
+      if urls.empty? || helper.destroyed?
         return
       end
 
@@ -98,64 +98,53 @@ Plugin.create :"mikutter-subparts-image" do
         @num = urls.length
 
         if @height_reported
-          Delayer.new {
-            helper.reset_height
-          }
+          helper.reset_height
         end
       }
 
-      if !helper.destroyed?
-        # クリックイベント
-        @ignore_event = false
-
-        if @click_sid
-          helper.signal_handler_disconnect(@click_sid)
-          @click_sid = nil
-        end
-
-        @click_sid = helper.ssc(:click) { |this, e, x, y|
-          pos = get_pointed_image_pos(x, y)
-
-          if pos
-            clicked_url = urls[pos]
-
-            case e.button
-            when 1
-              Plugin.call(:openimg_open, clicked_url) if clicked_url
-            end
-          end
-        }
-
-        if @motion_sid
-          helper.signal_handler_disconnect(@motion_sid)
-          @motion_sid = nil
-        end
-
-        @motion_event = helper.ssc(:motion_notify_event) { |this, x, y|
-          pos = get_pointed_image_pos(x, y)
-
-          if @draw_pos != pos
-            @draw_pos = pos
-
-            Delayer.new {
-              helper.on_modify
-            }
-          end
-        }
-
-        if @leave_sid
-          helper.signal_handler_disconnect(@leave_sid)
-          @leave_sid = nil
-        end
-
-        @leave_sid = helper.ssc(:leave_notify_event) { |this|
-          @draw_pos = nil
-
-          Delayer.new {
-            helper.on_modify
-          }
-        }
+      # クリックイベント
+      if @click_sid
+        helper.signal_handler_disconnect(@click_sid)
+        @click_sid = nil
       end
+
+      @click_sid = helper.ssc(:click) { |this, e, x, y|
+        pos = get_pointed_image_pos(x, y)
+
+        if pos
+          clicked_url = urls[pos]
+
+          case e.button
+          when 1
+            Plugin.call(:openimg_open, clicked_url) if clicked_url
+          end
+        end
+      }
+
+      if @motion_sid
+        helper.signal_handler_disconnect(@motion_sid)
+        @motion_sid = nil
+      end
+
+      @motion_event = helper.ssc(:motion_notify_event) { |this, x, y|
+        pos = get_pointed_image_pos(x, y)
+        if @draw_pos != pos
+          @draw_pos = pos
+          helper.on_modify
+        end
+        false
+      }
+
+      if @leave_sid
+        helper.signal_handler_disconnect(@leave_sid)
+        @leave_sid = nil
+      end
+
+      @leave_sid = helper.ssc(:leave_notify_event) { |this|
+        @draw_pos = nil
+        helper.on_modify
+        false
+      }
     end
 
     # コンストラクタ
