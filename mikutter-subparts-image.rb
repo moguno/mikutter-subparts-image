@@ -70,8 +70,6 @@ Plugin.create :"mikutter-subparts-image" do
 
     # イメージ取得完了
     def on_image_loaded(pos, pixbuf)
-      # puts "#{@helper_message[0..10]} image loaded start #{pos}"
-
       if !helper.destroyed?
         # 再描画イベント
         sid = helper.ssc(:expose_event, helper) {
@@ -85,10 +83,7 @@ Plugin.create :"mikutter-subparts-image" do
       # サブパーツ描画
       @main_icons[pos] = pixbuf
 
-      # puts "#{@helper_message[0..10]} draw ready #{pos}"
-
       Delayer.new {
-        # puts "#{@helper_message[0..10]} draw image #{pos}"
         helper.on_modify
       }
     end
@@ -208,10 +203,9 @@ Plugin.create :"mikutter-subparts-image" do
               error exception
             }
           end
-        }.trap{ |exception| 
-puts "------------------------------------------124124S"
-puts exception
-error exception }
+        }.trap { |exception| 
+          error exception 
+	}
       end
     end
 
