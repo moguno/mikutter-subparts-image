@@ -9,10 +9,15 @@ Plugin.create :"mikutter-subparts-image" do
   UserConfig[:subparts_image_round] ||= 10
   UserConfig[:subparts_image_margin] ||= 2
 
+  if UserConfig[:subparts_image_mozaic_sensitive] == nil
+    UserConfig[:subparts_image_mozaic_sensitive] ||= true
+  end
+
   settings _("インライン画像表示") do
     adjustment(_("濃さ(%)"), :subparts_image_tp, 0, 100)
     adjustment(_("角を丸くする"), :subparts_image_round, 0, 200)
     adjustment(_("マージン(px)"), :subparts_image_margin, 0, 12)
+    boolean(_("閲覧注意画像をぼかして表示する"), :subparts_image_mozaic_sensitive)
   end
 
 
@@ -320,7 +325,17 @@ error exception }
     def render(context)
       # 全画像プレビュー
       if !(@draw_pos && @main_icons[@draw_pos])
-        @main_icons.compact.map.with_index { |icon, pos|
+        # 閲覧注意画像か？
+        icons = if message.sensitive? && UserConfig[:subparts_image_mozaic_sensitive]
+          # モザイク画像を生成する
+      	  @main_icons.map { |_|
+      		  _.scale(16, 16).scale(_.width, _.height)
+          }
+        else
+          @main_icons
+        end
+
+        icons.compact.map.with_index { |icon, pos|
           draw_rect = image_draw_area(pos, self.width)
           crop_rect = image_crop_area(pos, icon, draw_rect)
           [icon, add_margin(draw_rect, UserConfig[:subparts_image_margin]), crop_rect]
