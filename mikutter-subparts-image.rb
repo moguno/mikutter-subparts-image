@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-miquire :mui, 'sub_parts_helper'
 
 require 'gtk2'
 require 'cairo'
